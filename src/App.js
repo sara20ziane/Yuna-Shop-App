@@ -1343,7 +1343,7 @@ const MainApp = ({ user }) => {
     </div>
   );
 }
-
+export default App;
 // --- SUB COMPONENTS (MODALS) ---
 const OrderModal = ({ editingOrder, customers, orders, orderItems, setOrderItems, orderPayments, setOrderPayments, orderStatus, setOrderStatus, orderDate, setOrderDate, orderNumber, setOrderNumber, config, arrivages, handleSaveOrder, formatDA, calculateTotals, shippingNational, setShippingNational, onClose }) => {
   const [defaultArrivage, setDefaultArrivage] = useState(editingOrder ? orderItems[0]?.arrivageId || "" : "");

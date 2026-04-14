@@ -1348,6 +1348,7 @@ const MainApp = ({ user }) => {
                     width={60}
                   />
                   <RechartsTooltip
+                    formatter={(value) => [formatDA(value)]}
                     contentStyle={{
                       borderRadius: "12px",
                       border: "none",
@@ -2974,7 +2975,7 @@ const OrderModal = ({
                     <div className="absolute left-2 top-3 md:top-1/2 md:-translate-y-1/2 w-5 h-5 bg-[#FAF7F2] border border-[#E8D5C4] rounded-full flex items-center justify-center text-[9px] font-black text-[#8D7B68]">
                       {index + 1}
                     </div>
-                    <div className="grid grid-cols-1 md:flex gap-2">
+                    <div className="flex flex-col md:flex-row gap-2">
                       <input
                         placeholder="Désignation exacte..."
                         className="w-full md:flex-[2] p-3 md:p-2.5 bg-[#FAF7F2]/50 border border-transparent focus:border-[#D4B996] rounded-xl outline-none text-xs font-bold text-[#4A3F35]"
@@ -2989,11 +2990,11 @@ const OrderModal = ({
                           )
                         }
                       />
-                      <div className="flex gap-2 w-full md:w-auto">
+                      <div className="grid grid-cols-2 md:flex gap-2 w-full md:w-auto">
                         <input
                           list="catList"
                           placeholder="Catégorie"
-                          className="flex-1 p-3 md:p-2.5 bg-[#FAF7F2]/50 border border-transparent focus:border-[#D4B996] rounded-xl outline-none text-xs font-bold text-[#4A3F35]"
+                          className="col-span-2 md:col-span-1 md:flex-1 p-3 md:p-2.5 bg-[#FAF7F2]/50 border border-transparent focus:border-[#D4B996] rounded-xl outline-none text-xs font-bold text-[#4A3F35]"
                           value={item.category}
                           onChange={(e) =>
                             setOrderItems(
@@ -3008,7 +3009,7 @@ const OrderModal = ({
                         <input
                           list="sizeList"
                           placeholder="Taille"
-                          className="w-1/3 md:w-20 p-3 md:p-2.5 bg-[#FAF7F2]/50 border border-transparent focus:border-[#D4B996] rounded-xl outline-none text-xs font-bold text-[#4A3F35] text-center"
+                          className="col-span-1 md:w-20 p-3 md:p-2.5 bg-[#FAF7F2]/50 border border-transparent focus:border-[#D4B996] rounded-xl outline-none text-xs font-bold text-[#4A3F35] text-center"
                           value={item.size}
                           onChange={(e) =>
                             setOrderItems(
@@ -3023,7 +3024,7 @@ const OrderModal = ({
                         <input
                           list="colorList"
                           placeholder="Couleur"
-                          className="w-1/3 md:w-24 p-3 md:p-2.5 bg-[#FAF7F2]/50 border border-transparent focus:border-[#D4B996] rounded-xl outline-none text-xs font-bold text-[#4A3F35] text-center"
+                          className="col-span-1 md:w-24 p-3 md:p-2.5 bg-[#FAF7F2]/50 border border-transparent focus:border-[#D4B996] rounded-xl outline-none text-xs font-bold text-[#4A3F35] text-center"
                           value={item.color}
                           onChange={(e) =>
                             setOrderItems(
@@ -3878,7 +3879,7 @@ const DeliverySlipModal = ({ order, customers, onClose, formatDA }) => {
 
   return (
     <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1010] flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl relative animate-in zoom-in-95 flex flex-col max-h-[90vh] overflow-hidden">
+      <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl relative animate-in zoom-in-95 flex flex-col max-h-[90vh] overflow-hidden print:max-h-none print:overflow-visible print:shadow-none print:border-none print:bg-white print:m-0 print:p-0">
         <div className="absolute top-4 right-4 flex gap-2 z-20 print:hidden">
           <button
             onClick={() => window.print()}
@@ -3978,9 +3979,20 @@ const DeliverySlipModal = ({ order, customers, onClose, formatDA }) => {
           </div>
         </div>
       </div>
-      <style
-        dangerouslySetContent
-      >{`@media print { body * { visibility: hidden; } .animate-in, .animate-in * { visibility: visible; } .animate-in { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; border-radius: 0; } }`}</style>
+      <style dangerouslySetInnerHTML={{__html: `
+        @media print {
+          body * { visibility: hidden; }
+          .animate-in, .animate-in * { visibility: visible; }
+          .animate-in { 
+            position: absolute !important; left: 0 !important; top: 0 !important; 
+            width: 100% !important; max-height: none !important; overflow: visible !important; 
+            box-shadow: none !important; border-radius: 0 !important; transform: none !important; 
+            margin: 0 !important; padding: 0 !important; background: white !important;
+          }
+          .custom-scrollbar { overflow: visible !important; max-height: none !important; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+      `}} />
     </div>
   );
 };
@@ -4002,14 +4014,22 @@ const ReceiptModal = ({ order, onClose, formatDA }) => {
 
   return (
     <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1010] flex items-center justify-center p-4">
-      <div className="bg-[#FAF7F2] w-full max-w-md rounded-[2rem] shadow-2xl relative animate-in zoom-in-95 flex flex-col max-h-[90vh] overflow-hidden">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 bg-white/90 backdrop-blur-md rounded-full hover:bg-white text-[#8D7B68] transition-colors z-20 shadow-sm"
-        >
-          <X size={18} />
-        </button>
-        <div className="p-8 md:p-10 pt-12 md:pt-12 text-center overflow-y-auto custom-scrollbar flex-1">
+      <div className="bg-[#FAF7F2] w-full max-w-md rounded-[2rem] shadow-2xl relative animate-in zoom-in-95 flex flex-col max-h-[90vh] overflow-hidden print:max-h-none print:overflow-visible print:shadow-none print:border-none print:bg-white print:m-0 print:p-0">
+        <div className="absolute top-4 right-4 flex gap-2 z-20 print:hidden">
+          <button
+            onClick={() => window.print()}
+            className="p-2 bg-white/90 backdrop-blur-md rounded-full hover:bg-[#8D7B68] hover:text-white text-[#8D7B68] transition-colors shadow-sm"
+          >
+            <Printer size={18} />
+          </button>
+          <button
+            onClick={onClose}
+            className="p-2 bg-white/90 backdrop-blur-md rounded-full hover:bg-white text-[#8D7B68] transition-colors shadow-sm"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <div className="p-8 md:p-10 pt-12 md:pt-12 text-center overflow-y-auto custom-scrollbar flex-1 print:overflow-visible print:p-4">
           <div className="mb-6 md:mb-8">
             <h2 className="font-serif text-xl md:text-2xl font-bold text-[#8D7B68] tracking-widest mb-1">
               YUNA'S SHOP
@@ -4020,7 +4040,7 @@ const ReceiptModal = ({ order, onClose, formatDA }) => {
             </p>
           </div>
           <div className="bg-white p-4 md:p-5 rounded-2xl border border-[#E8D5C4]/30 text-left mb-6 md:mb-8 relative overflow-hidden shadow-sm">
-            <div className="absolute top-0 right-0 w-12 h-12 md:w-16 md:h-16 bg-[#FAF7F2] rounded-bl-full -mr-6 -mt-6 md:-mr-8 md:-mt-8"></div>
+            <div className="absolute top-0 right-0 w-12 h-12 md:w-16 h-16 bg-[#FAF7F2] rounded-bl-full -mr-6 -mt-6 md:-mr-8 md:-mt-8 print:hidden"></div>
             <p className="text-xs font-bold text-[#8D7B68] mb-1">
               {order.customerName}
             </p>
@@ -4046,7 +4066,7 @@ const ReceiptModal = ({ order, onClose, formatDA }) => {
               ))}
             </div>
           </div>
-          <div className="space-y-2 md:space-y-3 text-xs bg-white/50 p-4 md:p-5 rounded-2xl border border-[#E8D5C4]/20">
+          <div className="space-y-2 md:space-y-3 text-xs bg-white/50 p-4 md:p-5 rounded-2xl border border-[#E8D5C4]/20 print:border-2">
             <div className="flex justify-between text-[#8D7B68]/70 font-medium">
               <span>Sous-total</span>
               <span>{formatDA(subtotal)}</span>
@@ -4072,6 +4092,20 @@ const ReceiptModal = ({ order, onClose, formatDA }) => {
           </div>
         </div>
       </div>
+      <style dangerouslySetInnerHTML={{__html: `
+        @media print {
+          body * { visibility: hidden; }
+          .animate-in, .animate-in * { visibility: visible; }
+          .animate-in { 
+            position: absolute !important; left: 0 !important; top: 0 !important; 
+            width: 100% !important; max-height: none !important; overflow: visible !important; 
+            box-shadow: none !important; border-radius: 0 !important; transform: none !important; 
+            margin: 0 !important; padding: 0 !important; background: white !important;
+          }
+          .custom-scrollbar { overflow: visible !important; max-height: none !important; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+      `}} />
     </div>
   );
 };

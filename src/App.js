@@ -304,7 +304,7 @@ const PlatformIcon = ({ type, size = 14 }) => {
 };
 
 const ModalHeader = ({ title, onClose }) => (
-  <div className="flex justify-between items-center mb-4 md:mb-6 pb-4 border-b border-gray-50/50 shrink-0">
+  <div className="flex justify-between items-center mb-4 md:mb-6 pb-4 border-b border-gray-50/50 shrink-0 print:hidden">
     <h3 className="text-sm font-serif text-[#8D7B68] tracking-widest uppercase font-bold">
       {title}
     </h3>
@@ -346,7 +346,7 @@ const Toast = ({ msg, type, onClose }) => {
   if (!msg) return null;
   return (
     <div
-      className={`fixed top-4 right-4 z-[9999] px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 animate-in slide-in-from-top-4 ${
+      className={`fixed top-4 right-4 z-[9999] px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 animate-in slide-in-from-top-4 print:hidden ${
         type === "success" ? "bg-green-500 text-white" : "bg-red-500 text-white"
       }`}
     >
@@ -1129,7 +1129,7 @@ const MainApp = ({ user }) => {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden font-sans bg-[#FDFBF7] text-[#4A3F35]">
+    <div className="flex h-screen overflow-hidden font-sans bg-[#FDFBF7] text-[#4A3F35] print:block print:h-auto print:overflow-visible print:bg-white">
       <Toast
         msg={toast?.msg}
         type={toast?.type}
@@ -1151,7 +1151,7 @@ const MainApp = ({ user }) => {
         ))}
       </datalist>
 
-      <aside className="hidden md:flex w-64 border-r border-[#E8D5C4]/30 p-6 flex-col gap-6 bg-white/50 backdrop-blur-md z-10 shadow-sm">
+      <aside className="hidden md:flex w-64 border-r border-[#E8D5C4]/30 p-6 flex-col gap-6 bg-white/50 backdrop-blur-md z-10 shadow-sm print:hidden">
         <div className="px-2 text-center">
           <h1 className="text-xl font-serif tracking-widest text-[#8D7B68] font-bold">
             YUNA'S SHOP
@@ -1210,7 +1210,7 @@ const MainApp = ({ user }) => {
         </button>
       </aside>
 
-      <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-32 md:pb-8 relative custom-scrollbar bg-[#FDFBF7]">
+      <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-32 md:pb-8 relative custom-scrollbar bg-[#FDFBF7] print:hidden">
         <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-2 w-full md:w-auto justify-between">
             <div className="flex items-center gap-2">
@@ -2424,7 +2424,7 @@ const MainApp = ({ user }) => {
         )}
       </main>
 
-      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-xl border-t border-[#E8D5C4]/50 flex justify-around items-center px-2 pt-2 pb-[max(16px,env(safe-area-inset-bottom))] z-[900] shadow-[0_-10px_40px_rgba(141,123,104,0.1)]">
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-xl border-t border-[#E8D5C4]/50 flex justify-around items-center px-2 pt-2 pb-[max(16px,env(safe-area-inset-bottom))] z-[900] shadow-[0_-10px_40px_rgba(141,123,104,0.1)] print:hidden">
         <button
           onClick={() => setActiveTab("dashboard")}
           className={`flex flex-col items-center gap-1 p-2 transition-colors ${
@@ -3878,8 +3878,8 @@ const DeliverySlipModal = ({ order, customers, onClose, formatDA }) => {
     : Math.max(0, subtotal + shipping - advance);
 
   return (
-    <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1010] flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl relative animate-in zoom-in-95 flex flex-col max-h-[90vh] overflow-hidden print:max-h-none print:overflow-visible print:shadow-none print:border-none print:bg-white print:m-0 print:p-0">
+    <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1010] flex items-center justify-center p-4 print:static print:bg-transparent print:p-0 print:block">
+      <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl relative animate-in zoom-in-95 flex flex-col max-h-[90vh] overflow-hidden print:max-h-none print:shadow-none print:rounded-none print:animate-none print:transform-none print:max-w-none print:border-none print:h-auto">
         <div className="absolute top-4 right-4 flex gap-2 z-20 print:hidden">
           <button
             onClick={() => window.print()}
@@ -3894,35 +3894,35 @@ const DeliverySlipModal = ({ order, customers, onClose, formatDA }) => {
             <X size={18} />
           </button>
         </div>
-        <div className="overflow-y-auto custom-scrollbar flex-1 pb-8 print:p-0 print:overflow-visible">
-          <div className="bg-[#FAF7F2] p-8 pt-10 border-b border-[#E8D5C4]/40 text-center relative print:bg-white print:border-b-2">
-            <Truck size={32} className="mx-auto mb-3 text-[#8D7B68]" />
-            <h2 className="font-serif text-2xl font-bold text-[#8D7B68] tracking-widest mb-1">
+        <div className="overflow-y-auto custom-scrollbar flex-1 pb-8 print:overflow-visible print:pb-0 print:h-auto">
+          <div className="bg-[#FAF7F2] p-8 pt-10 border-b border-[#E8D5C4]/40 text-center relative print:bg-transparent print:border-b-2 print:border-black">
+            <Truck size={32} className="mx-auto mb-3 text-[#8D7B68] print:text-black" />
+            <h2 className="font-serif text-2xl font-bold text-[#8D7B68] tracking-widest mb-1 print:text-black">
               BORDEREAU
             </h2>
-            <p className="text-[10px] uppercase tracking-widest text-[#B8A99A] font-bold">
+            <p className="text-[10px] uppercase tracking-widest text-[#B8A99A] font-bold print:text-gray-600">
               Commande #{order.orderNumber}
             </p>
           </div>
           <div className="p-8 space-y-6 print:p-4">
             <div>
-              <h4 className="text-[9px] uppercase tracking-widest text-gray-400 font-bold border-b border-gray-100 pb-2 mb-3">
+              <h4 className="text-[9px] uppercase tracking-widest text-gray-400 font-bold border-b border-gray-100 pb-2 mb-3 print:text-gray-600 print:border-black">
                 Destinataire
               </h4>
               <div className="space-y-1.5 text-sm">
-                <p className="font-bold text-[#4A3F35] text-base">
+                <p className="font-bold text-[#4A3F35] text-base print:text-black">
                   {order.customerName}
                 </p>
-                <p className="text-[#8D7B68] font-medium flex items-center gap-2">
+                <p className="text-[#8D7B68] font-medium flex items-center gap-2 print:text-black">
                   <Phone size={12} /> {customer?.phone}{" "}
                   {customer?.phone2 && `/ ${customer?.phone2}`}
                 </p>
-                <div className="bg-gray-50 p-3 rounded-xl mt-2 text-xs text-gray-600 border border-gray-100 print:border-2">
-                  <p className="font-bold text-[#4A3F35] mb-1">
+                <div className="bg-gray-50 p-3 rounded-xl mt-2 text-xs text-gray-600 border border-gray-100 print:bg-transparent print:border-2 print:border-black print:text-black">
+                  <p className="font-bold text-[#4A3F35] mb-1 print:text-black">
                     {customer?.wilaya} - {customer?.commune}
                   </p>
                   <p className="flex items-center gap-1.5">
-                    <MapPin size={12} className="text-[#D4B996]" />{" "}
+                    <MapPin size={12} className="text-[#D4B996] print:text-black" />{" "}
                     {customer?.deliveryMode === "stopdesk"
                       ? `Stopdesk: ${customer?.stopdeskName}`
                       : "Livraison à Domicile"}
@@ -3931,68 +3931,54 @@ const DeliverySlipModal = ({ order, customers, onClose, formatDA }) => {
               </div>
             </div>
             <div>
-              <h4 className="text-[9px] uppercase tracking-widest text-gray-400 font-bold border-b border-gray-100 pb-2 mb-3">
+              <h4 className="text-[9px] uppercase tracking-widest text-gray-400 font-bold border-b border-gray-100 pb-2 mb-3 print:text-gray-600 print:border-black">
                 Détails du colis
               </h4>
               <div className="flex gap-4 mb-4">
-                <div className="flex-1 bg-[#FAF7F2]/50 p-3 rounded-xl border border-[#E8D5C4]/30 text-center print:border-2 print:bg-white">
-                  <p className="text-[10px] text-[#B8A99A] uppercase font-bold mb-1">
+                <div className="flex-1 bg-[#FAF7F2]/50 p-3 rounded-xl border border-[#E8D5C4]/30 text-center print:bg-transparent print:border-2 print:border-black">
+                  <p className="text-[10px] text-[#B8A99A] uppercase font-bold mb-1 print:text-black">
                     Articles
                   </p>
-                  <p className="font-black text-[#8D7B68] text-lg">
+                  <p className="font-black text-[#8D7B68] text-lg print:text-black">
                     {itemCount}
                   </p>
                 </div>
-                <div className="flex-1 bg-[#FAF7F2]/50 p-3 rounded-xl border border-[#E8D5C4]/30 text-center print:border-2 print:bg-white">
-                  <p className="text-[10px] text-[#B8A99A] uppercase font-bold mb-1">
+                <div className="flex-1 bg-[#FAF7F2]/50 p-3 rounded-xl border border-[#E8D5C4]/30 text-center print:bg-transparent print:border-2 print:border-black">
+                  <p className="text-[10px] text-[#B8A99A] uppercase font-bold mb-1 print:text-black">
                     Poids Total
                   </p>
-                  <p className="font-black text-[#8D7B68] text-lg">
+                  <p className="font-black text-[#8D7B68] text-lg print:text-black">
                     {totalWeight.toFixed(2)} <span className="text-xs">Kg</span>
                   </p>
                 </div>
               </div>
-              <div className="space-y-2 bg-gray-50 p-3 rounded-xl border border-gray-100 print:border-2 print:bg-white">
+              <div className="space-y-2 bg-gray-50 p-3 rounded-xl border border-gray-100 print:bg-transparent print:border-2 print:border-black">
                 {items.map((item, idx) => (
                   <div
                     key={idx}
-                    className="flex justify-between items-start text-xs border-b border-gray-200/50 last:border-0 pb-1.5 last:pb-0"
+                    className="flex justify-between items-start text-xs border-b border-gray-200/50 last:border-0 pb-1.5 last:pb-0 print:border-gray-400"
                   >
-                    <span className="text-[#4A3F35] font-medium pr-2 truncate">
+                    <span className="text-[#4A3F35] font-medium pr-2 truncate print:text-black">
                       • {item.name || "Article"}
                     </span>
-                    <span className="text-gray-400 text-[10px] whitespace-nowrap">
+                    <span className="text-gray-400 text-[10px] whitespace-nowrap print:text-black">
                       {item.size} / {item.color}
                     </span>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="bg-[#8D7B68] print:bg-white print:border-4 print:border-[#8D7B68] p-5 rounded-2xl text-white print:text-[#8D7B68] text-center shadow-md relative overflow-hidden">
-              <p className="text-[10px] uppercase tracking-widest font-medium opacity-80 print:opacity-100 mb-1">
+            <div className="bg-[#8D7B68] p-5 rounded-2xl text-white text-center shadow-md relative overflow-hidden print:bg-transparent print:border-4 print:border-black print:text-black print:shadow-none print:rounded-xl">
+              <p className="text-[10px] uppercase tracking-widest font-medium opacity-80 mb-1 print:opacity-100 print:text-black">
                 Montant à encaisser à la livraison
               </p>
-              <p className="text-3xl font-serif font-bold">
+              <p className="text-3xl font-serif font-bold print:text-black">
                 {totalToPay > 0 ? formatDA(totalToPay) : "PAYÉ"}
               </p>
             </div>
           </div>
         </div>
       </div>
-      <style dangerouslySetInnerHTML={{__html: `
-        @media print {
-          body * { visibility: hidden; }
-          .animate-in, .animate-in * { visibility: visible; }
-          .animate-in { 
-            position: absolute !important; left: 0 !important; top: 0 !important; 
-            width: 100% !important; max-height: none !important; overflow: visible !important; 
-            box-shadow: none !important; border-radius: 0 !important; transform: none !important; 
-            margin: 0 !important; padding: 0 !important; background: white !important;
-          }
-          .custom-scrollbar { overflow: visible !important; max-height: none !important; }
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        }
-      `}} />
     </div>
   );
 };
@@ -4013,12 +3999,12 @@ const ReceiptModal = ({ order, onClose, formatDA }) => {
     : Math.max(0, subtotal + shipping - advance);
 
   return (
-    <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1010] flex items-center justify-center p-4">
-      <div className="bg-[#FAF7F2] w-full max-w-md rounded-[2rem] shadow-2xl relative animate-in zoom-in-95 flex flex-col max-h-[90vh] overflow-hidden print:max-h-none print:overflow-visible print:shadow-none print:border-none print:bg-white print:m-0 print:p-0">
+    <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1010] flex items-center justify-center p-4 print:static print:bg-transparent print:p-0 print:block">
+      <div className="bg-[#FAF7F2] w-full max-w-md rounded-[2rem] shadow-2xl relative animate-in zoom-in-95 flex flex-col max-h-[90vh] overflow-hidden print:max-h-none print:shadow-none print:rounded-none print:animate-none print:transform-none print:max-w-none print:border-none print:h-auto print:bg-white">
         <div className="absolute top-4 right-4 flex gap-2 z-20 print:hidden">
           <button
             onClick={() => window.print()}
-            className="p-2 bg-white/90 backdrop-blur-md rounded-full hover:bg-[#8D7B68] hover:text-white text-[#8D7B68] transition-colors shadow-sm"
+            className="p-2 bg-white/90 backdrop-blur-md rounded-full hover:bg-white text-[#8D7B68] transition-colors shadow-sm"
           >
             <Printer size={18} />
           </button>
@@ -4029,22 +4015,22 @@ const ReceiptModal = ({ order, onClose, formatDA }) => {
             <X size={18} />
           </button>
         </div>
-        <div className="p-8 md:p-10 pt-12 md:pt-12 text-center overflow-y-auto custom-scrollbar flex-1 print:overflow-visible print:p-4">
+        <div className="p-8 md:p-10 pt-12 md:pt-12 text-center overflow-y-auto custom-scrollbar flex-1 print:overflow-visible print:p-4 print:h-auto">
           <div className="mb-6 md:mb-8">
-            <h2 className="font-serif text-xl md:text-2xl font-bold text-[#8D7B68] tracking-widest mb-1">
+            <h2 className="font-serif text-xl md:text-2xl font-bold text-[#8D7B68] tracking-widest mb-1 print:text-black">
               YUNA'S SHOP
             </h2>
-            <div className="h-px w-8 bg-[#D4B996] mx-auto mb-2"></div>
-            <p className="text-[8px] uppercase tracking-[0.4em] text-[#B8A99A] font-bold">
+            <div className="h-px w-8 bg-[#D4B996] mx-auto mb-2 print:bg-black"></div>
+            <p className="text-[8px] uppercase tracking-[0.4em] text-[#B8A99A] font-bold print:text-black">
               Bon de Commande
             </p>
           </div>
-          <div className="bg-white p-4 md:p-5 rounded-2xl border border-[#E8D5C4]/30 text-left mb-6 md:mb-8 relative overflow-hidden shadow-sm">
-            <div className="absolute top-0 right-0 w-12 h-12 md:w-16 h-16 bg-[#FAF7F2] rounded-bl-full -mr-6 -mt-6 md:-mr-8 md:-mt-8 print:hidden"></div>
-            <p className="text-xs font-bold text-[#8D7B68] mb-1">
+          <div className="bg-white p-4 md:p-5 rounded-2xl border border-[#E8D5C4]/30 text-left mb-6 md:mb-8 relative overflow-hidden shadow-sm print:bg-transparent print:border-2 print:border-black print:shadow-none">
+            <div className="absolute top-0 right-0 w-12 h-12 md:w-16 md:h-16 bg-[#FAF7F2] rounded-bl-full -mr-6 -mt-6 md:-mr-8 md:-mt-8 print:hidden"></div>
+            <p className="text-xs font-bold text-[#8D7B68] mb-1 print:text-black">
               {order.customerName}
             </p>
-            <p className="text-[9px] text-[#B8A99A] uppercase tracking-wider mb-3 md:mb-4">
+            <p className="text-[9px] text-[#B8A99A] uppercase tracking-wider mb-3 md:mb-4 print:text-black">
               CMD #{order.orderNumber}
             </p>
             <div className="space-y-2 md:space-y-3">
@@ -4053,59 +4039,45 @@ const ReceiptModal = ({ order, onClose, formatDA }) => {
                   key={idx}
                   className="flex justify-between items-start text-[10px]"
                 >
-                  <span className="text-[#4A3F35] font-medium max-w-[70%]">
+                  <span className="text-[#4A3F35] font-medium max-w-[70%] print:text-black">
                     {item.name || "Article"}{" "}
-                    <span className="text-[#B8A99A] italic">
+                    <span className="text-[#B8A99A] italic print:text-gray-600">
                       ({item.size}, {item.color})
                     </span>
                   </span>
-                  <span className="font-bold text-[#8D7B68]">
+                  <span className="font-bold text-[#8D7B68] print:text-black">
                     {formatDA(item.priceVente)}
                   </span>
                 </div>
               ))}
             </div>
           </div>
-          <div className="space-y-2 md:space-y-3 text-xs bg-white/50 p-4 md:p-5 rounded-2xl border border-[#E8D5C4]/20 print:border-2">
-            <div className="flex justify-between text-[#8D7B68]/70 font-medium">
+          <div className="space-y-2 md:space-y-3 text-xs bg-white/50 p-4 md:p-5 rounded-2xl border border-[#E8D5C4]/20 print:bg-transparent print:border-none print:p-0">
+            <div className="flex justify-between text-[#8D7B68]/70 font-medium print:text-black">
               <span>Sous-total</span>
               <span>{formatDA(subtotal)}</span>
             </div>
-            <div className="flex justify-between text-[#8D7B68]/70 font-medium">
+            <div className="flex justify-between text-[#8D7B68]/70 font-medium print:text-black">
               <span>Livraison</span>
               <span>{formatDA(shipping)}</span>
             </div>
-            <div className="flex justify-between text-green-600/80 font-bold">
+            <div className="flex justify-between text-green-600/80 font-bold print:text-black">
               <span>Avance</span>
               <span>- {formatDA(advance)}</span>
             </div>
-            <div className="h-px bg-[#E8D5C4] my-2 md:my-3 opacity-50"></div>
-            <div className="flex justify-between font-serif font-bold text-lg md:text-xl text-[#8D7B68]">
+            <div className="h-px bg-[#E8D5C4] my-2 md:my-3 opacity-50 print:bg-black print:opacity-100"></div>
+            <div className="flex justify-between font-serif font-bold text-lg md:text-xl text-[#8D7B68] print:text-black">
               <span>Reste à payer</span>
               <span>{total > 0 ? formatDA(total) : "0.00 DA"}</span>
             </div>
           </div>
-          <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-[#E8D5C4]/30">
-            <p className="text-[8px] uppercase tracking-[0.2em] text-[#D4B996] font-bold">
+          <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-[#E8D5C4]/30 print:border-black">
+            <p className="text-[8px] uppercase tracking-[0.2em] text-[#D4B996] font-bold print:text-black">
               Merci pour votre confiance ✨
             </p>
           </div>
         </div>
       </div>
-      <style dangerouslySetInnerHTML={{__html: `
-        @media print {
-          body * { visibility: hidden; }
-          .animate-in, .animate-in * { visibility: visible; }
-          .animate-in { 
-            position: absolute !important; left: 0 !important; top: 0 !important; 
-            width: 100% !important; max-height: none !important; overflow: visible !important; 
-            box-shadow: none !important; border-radius: 0 !important; transform: none !important; 
-            margin: 0 !important; padding: 0 !important; background: white !important;
-          }
-          .custom-scrollbar { overflow: visible !important; max-height: none !important; }
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        }
-      `}} />
     </div>
   );
 };

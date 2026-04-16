@@ -320,33 +320,42 @@ const MarketingTab = ({ currencyRates }) => {
   const [calcLogMethod, setCalcLogMethod] = useState("weight"); // 'weight' ou 'fixed'
   const [calcWeight, setCalcWeight] = useState("");
   const [calcLogFixed, setCalcLogFixed] = useState("");
-  const [logRatePerKg, setLogRatePerKg] = useState("1500");
 
   const computedPrice = useMemo(() => {
     if (!calcPriceEuro) return null;
     const euro = parseFloat(calcPriceEuro) || 0;
     const rate = parseFloat(calcRate) || 250;
-    const achatDA = euro * rate;
     
+    // 1. Détermination du Coefficient
+    let coef = 1.2; // Par défaut > 30€
+    if (euro <= 15) coef = 1.3;
+    else if (euro > 15 && euro <= 30) coef = 1.25;
+
+    // 2. Calcul du prix de base margé (sans logistique)
+    const baseMargined = (euro * rate) * coef;
+
+    // 3. Calcul de la Logistique
     let logDA = 0;
     if (calcLogMethod === "weight") {
-      logDA = ((parseFloat(calcWeight) || 0) / 1000) * (parseFloat(logRatePerKg) || 1500);
+      // Option A : Poids en kg * 2200 DA
+      const weightKg = parseFloat(calcWeight) || 0;
+      logDA = weightKg * 2200; 
     } else {
+      // Option B : Forfait fixe
       logDA = parseFloat(calcLogFixed) || 0;
     }
 
-    const totalCost = achatDA + logDA;
-    
-    let coef = 1.2;
-    if (euro <= 15) coef = 1.3;
-    else if (euro <= 30) coef = 1.25;
-
-    const rawSuggested = totalCost * coef;
+    // 4. Prix de Vente Final
+    const rawSuggested = baseMargined + logDA;
     const suggestedPrice = Math.ceil(rawSuggested / 50) * 50; // Arrondi aux 50 DA supérieurs
+    
+    // Pour l'affichage indicatif
+    const achatDA = euro * rate;
+    const totalCost = achatDA + logDA; 
     const benefit = suggestedPrice - totalCost;
 
     return { achatDA, logDA, totalCost, suggestedPrice, coef, benefit };
-  }, [calcPriceEuro, calcRate, calcLogMethod, calcWeight, calcLogFixed, logRatePerKg]);
+  }, [calcPriceEuro, calcRate, calcLogMethod, calcWeight, calcLogFixed]);
 
   // Assistant IA Copywriting
   const [aiProduct, setAiProduct] = useState("");
@@ -360,7 +369,6 @@ const MarketingTab = ({ currencyRates }) => {
     setAiLoading(true);
     setCopied(false);
     
-    // Simulation d'un appel IA avec le prompt spécifique à Yuna's Shop
     setTimeout(() => {
       const copy = `✨ Nouveau Coup de Cœur chez Yuna's Shop ✨\n\nDécouvrez notre magnifique ${aiProduct || "pièce"}, pensée spécialement pour vous ! 🌸\n\n${aiDetails ? `✨ Ses atouts : ${aiDetails}\n\n` : ''}Une création douce, élégante et ultra-confortable pour un look moderne et rassurant. Parfaite pour sublimer votre quotidien en toute simplicité ! 🤍\n\n🏷️ Quantité ultra-limitée (fonctionne sur commande).\n💌 Envoyez-nous un message privé pour réserver la vôtre ou pour toute question.\n\n🚚 Livraison disponible (Domicile & Stopdesk).\n\n#YunasShop #ModeFemme #Elegance #BeautéAlgérienne #Nude #RosePoudré`;
       setAiResult(copy);
@@ -419,22 +427,14 @@ const MarketingTab = ({ currencyRates }) => {
               </div>
               
               {calcLogMethod === "weight" ? (
-                <div className="grid grid-cols-2 gap-4 animate-in fade-in">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] uppercase font-bold text-gray-400">Poids estimé (g)</label>
-                    <input 
-                      type="number" value={calcWeight} onChange={(e) => setCalcWeight(e.target.value)}
-                      className="w-full p-3 rounded-xl bg-white border border-gray-200/50 text-sm font-bold text-[#4A3F35] outline-none"
-                      placeholder="Ex: 350"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] uppercase font-bold text-gray-400">Tarif / Kg (DA)</label>
-                    <input 
-                      type="number" value={logRatePerKg} onChange={(e) => setLogRatePerKg(e.target.value)}
-                      className="w-full p-3 rounded-xl bg-white border border-gray-200/50 text-sm font-bold text-gray-400 outline-none"
-                    />
-                  </div>
+                <div className="animate-in fade-in space-y-1.5">
+                  <label className="text-[10px] uppercase font-bold text-gray-400">Poids estimé (kg)</label>
+                  <input 
+                    type="number" step="0.01" value={calcWeight} onChange={(e) => setCalcWeight(e.target.value)}
+                    className="w-full p-3 rounded-xl bg-white border border-gray-200/50 text-sm font-bold text-[#4A3F35] outline-none"
+                    placeholder="Ex: 0.350"
+                  />
+                  <p className="text-[9px] text-gray-400 mt-1 italic">Le calcul se fait automatiquement sur la base de 2200 DA / kg.</p>
                 </div>
               ) : (
                 <div className="animate-in fade-in space-y-1.5">
@@ -747,9 +747,6 @@ const MainApp = ({ user }) => {
     // ROAS Logic
     const roas = totalSponsors > 0 ? (totalRevenue / totalSponsors).toFixed(1) : 0;
 
-    // Calcul du pourcentage
-    const margePercent = totalRevenue > 0 ? ((totalBenefitBrut / totalRevenue) * 100).toFixed(1) : 0;
-
     const clientMap = {};
     dOrders.forEach((o) => {
       if (!clientMap[o.customerId]) clientMap[o.customerId] = { name: o.customerName, total: 0, count: 0 };
@@ -761,7 +758,7 @@ const MainApp = ({ user }) => {
     return {
       totalRevenue, totalBenefitBrut, totalSponsors, totalExpenses,
       netBenefit: totalBenefitBrut - totalSponsors - totalExpenses,
-      ordersCount: dOrders.length, topClients, roas, margePercent
+      ordersCount: dOrders.length, topClients, roas
     };
   }, [orders, sponsors, expenses, filterYear, filterMonth]);
 
@@ -972,7 +969,7 @@ const MainApp = ({ user }) => {
           <div className="space-y-4 md:space-y-8 animate-in fade-in">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
               <StatCard label="CA" value={formatDA(stats.totalRevenue)} color="#8D7B68" highlight icon={TrendingUp} />
-              <StatCard label="Marge Brute" value={formatDA(stats.totalBenefitBrut)} subValue={`Marge: ${stats.margePercent}%`} color="#22C55E" icon={PieChart} />
+              <StatCard label="Marge Brute" value={formatDA(stats.totalBenefitBrut)} color="#22C55E" icon={PieChart} />
               <StatCard label="Bénéfice Net" value={formatDA(stats.netBenefit)} color={stats.netBenefit > 0 ? "#22C55E" : "#EF4444"} icon={DollarSign} />
               <StatCard label="Dépenses Pub/Frais" value={formatDA(stats.totalSponsors + stats.totalExpenses)} subValue={stats.roas > 0 ? `ROAS: x${stats.roas}` : null} color="#EF4444" icon={Megaphone} />
             </div>
@@ -1068,17 +1065,12 @@ const MainApp = ({ user }) => {
                     const total = (parseFloat(o.totalVente) || 0) + (parseFloat(o.shippingNational) || 0);
                     const reste = calculateReste(o);
                     const isLate = o.status === "En cours de livraison" && lateDeliveries.find((late) => late.id === o.id);
-                    const montantAlgerie = (o.items || []).filter(i => i.status === "Reçu" || i.status === "Livré" || parseFloat(i.weightG) > 0).reduce((sum, i) => sum + (parseFloat(i.priceVente) || 0), 0);
-                    
                     return (
                       <tr key={o.id} className={`group transition-colors ${isLate ? "bg-red-50/40 hover:bg-red-50/60" : "hover:bg-[#FAF7F2]/50"}`}>
                         <td className="p-4 font-bold text-[#8D7B68]">{o.orderNumber}{isLate && <AlertTriangle size={12} className="inline ml-2 text-red-500 animate-pulse" title="En livraison depuis +7 jours" />}</td>
                         <td className="p-4 font-medium text-[#4A3F35]">{o.customerName}</td>
                         <td className="p-4"><span className={`px-2 py-1 bg-white rounded-md text-[9px] uppercase font-bold shadow-sm border ${isLate ? "border-red-300 text-red-500" : "border-gray-100 text-gray-500"}`}>{o.status}</span></td>
-                        <td className="p-4 text-right">
-                          <div className="font-black text-[#8D7B68]">{formatDA(total)}</div>
-                          {montantAlgerie > 0 && <div className="text-[9px] text-green-600 font-bold uppercase mt-1">DZ: {formatDA(montantAlgerie)}</div>}
-                        </td>
+                        <td className="p-4 text-right font-black text-[#8D7B68]">{formatDA(total)}</td>
                         <td className={`p-4 text-right font-black ${reste > 0 ? "text-[#EF4444]" : "text-green-500"}`}>{reste > 0 ? formatDA(reste) : "Réglé"}</td>
                         <td className="p-4 text-right flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
                           <button onClick={() => setShowCostBreakdown(o)} className="text-blue-400 p-1.5 hover:bg-blue-50 rounded-lg"><Calculator size={16} /></button>
@@ -1103,8 +1095,6 @@ const MainApp = ({ user }) => {
                 const total = (parseFloat(o.totalVente) || 0) + (parseFloat(o.shippingNational) || 0);
                 const reste = calculateReste(o);
                 const isLate = o.status === "En cours de livraison" && lateDeliveries.find((late) => late.id === o.id);
-                const montantAlgerie = (o.items || []).filter(i => i.status === "Reçu" || i.status === "Livré" || parseFloat(i.weightG) > 0).reduce((sum, i) => sum + (parseFloat(i.priceVente) || 0), 0);
-                
                 return (
                   <div key={o.id} className={`p-4 rounded-2xl shadow-sm border flex flex-col gap-3 ${isLate ? "bg-red-50/40 border-red-200" : "bg-white border-[#E8D5C4]/30"}`}>
                     <div className="flex justify-between items-start">
@@ -1115,11 +1105,7 @@ const MainApp = ({ user }) => {
                       <span className="px-2 py-1 bg-gray-50 rounded-lg text-[9px] uppercase font-bold text-gray-500 border border-gray-100">{o.status}</span>
                     </div>
                     <div className="flex justify-between items-center bg-[#FAF7F2]/50 p-2.5 rounded-xl border border-transparent">
-                      <div>
-                        <p className="text-[8px] uppercase text-gray-400 font-bold">Total</p>
-                        <p className="font-black text-[#8D7B68] text-xs">{formatDA(total)}</p>
-                        {montantAlgerie > 0 && <p className="text-[9px] text-green-600 font-bold uppercase mt-0.5">DZ: {formatDA(montantAlgerie)}</p>}
-                      </div>
+                      <div><p className="text-[8px] uppercase text-gray-400 font-bold">Total</p><p className="font-black text-[#8D7B68] text-xs">{formatDA(total)}</p></div>
                       <div className="text-right"><p className="text-[8px] uppercase text-gray-400 font-bold">Reste</p><p className={`font-black text-xs ${reste > 0 ? "text-red-400" : "text-green-500"}`}>{reste > 0 ? formatDA(reste) : "Payé"}</p></div>
                     </div>
                     <div className="flex justify-between items-center pt-2 border-t border-gray-100">
@@ -1304,7 +1290,7 @@ const MainApp = ({ user }) => {
         <button onClick={() => setActiveTab("marketing")} className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === "marketing" ? "text-[#8D7B68]" : "text-[#B8A99A]"}`}><Wand2 size={20} /><span className="text-[8px] font-bold">Outils</span></button>
         <button onClick={() => setActiveTab("customers")} className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === "customers" ? "text-[#8D7B68]" : "text-[#B8A99A]"}`}><Users size={20} /><span className="text-[8px] font-bold">Clientes</span></button>
         <button onClick={() => setActiveTab("arrivages")} className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === "arrivages" ? "text-[#8D7B68]" : "text-[#B8A99A]"}`}><Globe size={20} /><span className="text-[8px] font-bold">Arrivages</span></button>
-        <button onClick={() => setActiveTab("finances")} className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === "finances" ? "text-[#8D7B68]" : "text-[#B8A99A]"}`}><Euro size={20} /><span className="text-[8px] font-bold">Tréso</span></button>
+        <button onClick={() => setActiveTab("finances")} className={`flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === "finances" ? "text-[#8D7B68]" : "text-[#B8A99A]"}`}><Euro size={20} /><span className="text-[8px] font-bold">Finances</span></button>
       </nav>
 
       {/* --- MODALS --- */}
@@ -1358,7 +1344,8 @@ const MainApp = ({ user }) => {
     </div>
   );
 }
-export default App;
+
+export default MainApp;
 
 // --- SUB COMPONENTS (MODALS) ---
 const OrderModal = ({ editingOrder, customers, orders, orderItems, setOrderItems, orderPayments, setOrderPayments, orderStatus, setOrderStatus, orderDate, setOrderDate, orderNumber, setOrderNumber, config, arrivages, handleSaveOrder, formatDA, calculateTotals, shippingNational, setShippingNational, onClose }) => {
@@ -1383,6 +1370,9 @@ const OrderModal = ({ editingOrder, customers, orders, orderItems, setOrderItems
   const totalVenteEtLivraison = calculateTotals(orderItems, 0, new Date()).venteTotal + (parseFloat(shippingNational) || 0);
   const isFullyPaidStatus = orderStatus === "Payée" || orderStatus === "Payée et livrée";
   const resteToPay = isFullyPaidStatus ? 0 : Math.max(0, totalVenteEtLivraison - totalAdvance);
+  
+  // Calcul de la valeur des articles reçus en Algérie
+  const totalRecuDA = orderItems.filter(item => item.status === "Reçu").reduce((sum, item) => sum + (parseFloat(item.priceVente) || 0), 0);
 
   return (
     <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1000] flex items-end md:items-center justify-center p-0 md:p-4 overflow-hidden pt-10">
@@ -1437,16 +1427,13 @@ const OrderModal = ({ editingOrder, customers, orders, orderItems, setOrderItems
                       </select>
                       <div className="col-span-1 flex items-center gap-1 bg-white px-2 py-2 md:py-1.5 rounded-lg shadow-sm border border-gray-100 md:w-24">
                         <span className="text-[9px] font-bold text-gray-400 hidden lg:inline">Poids(g)</span>
-                        {/* INPUT MODIFIÉ : Poids entraîne le statut Reçu */}
                         <input type="number" placeholder="g" className="w-full outline-none text-xs font-bold text-center md:text-right bg-transparent" value={item.weightG} onChange={(e) => {
-                          const val = e.target.value;
-                          setOrderItems(orderItems.map((oi) => {
-                            if (oi.id === item.id) {
-                              const isArrived = parseFloat(val) > 0;
-                              return { ...oi, weightG: val, status: (isArrived && oi.status === "En attente") ? "Reçu" : oi.status };
-                            }
-                            return oi;
-                          }));
+                          const newWeight = e.target.value;
+                          setOrderItems(orderItems.map((oi) => oi.id === item.id ? { 
+                            ...oi, 
+                            weightG: newWeight, 
+                            status: newWeight && parseFloat(newWeight) > 0 ? "Reçu" : oi.status 
+                          } : oi));
                         }} />
                       </div>
                       <div className="col-span-1 flex items-center gap-1 bg-white px-2 py-2 md:py-1.5 rounded-lg shadow-sm border border-gray-100 md:w-24">
@@ -1500,6 +1487,10 @@ const OrderModal = ({ editingOrder, customers, orders, orderItems, setOrderItems
                   </div>
                 </div>
                 <div className="space-y-2 mt-4">
+                  <div className="flex justify-between text-xs font-bold text-[#D4B996] mb-1 border-b border-gray-100 pb-2">
+                    <span>Valeur des articles reçus (Algérie) :</span>
+                    <span>{formatDA(totalRecuDA)}</span>
+                  </div>
                   <div className="flex justify-between text-xs font-bold text-gray-500"><span>Total Panier + Liv :</span><span>{formatDA(totalVenteEtLivraison)}</span></div>
                   <div className="flex justify-between text-xs font-bold text-green-600"><span>Total Avances :</span><span>- {formatDA(totalAdvance)}</span></div>
                   <div className="flex justify-between items-center pt-3 border-t border-[#E8D5C4]/40 mt-2"><span className="text-[11px] text-[#8D7B68] font-black uppercase tracking-widest">Reste à Payer</span><span className={`text-2xl font-serif font-bold ${resteToPay > 0 ? "text-[#8D7B68]" : "text-green-500"}`}>{formatDA(resteToPay)}</span></div>

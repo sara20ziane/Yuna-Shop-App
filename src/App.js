@@ -318,25 +318,51 @@ const ModalHeader = ({ title, onClose }) => (
   </div>
 );
 
-const StatCard = ({ label, value, color, highlight, icon: Icon }) => (
+const StatCard = ({ label, value, subValue, color, highlight, icon: Icon, percentage, invertColor }) => (
   <div
-    className={`p-4 md:p-8 rounded-xl md:rounded-[2rem] transition-all duration-500 hover:-translate-y-1 ${
+    className={`p-4 md:p-6 rounded-2xl md:rounded-[2rem] transition-all duration-500 hover:-translate-y-1 flex flex-col justify-between ${
       highlight
         ? "bg-white shadow-md border border-[#E8D5C4]/40"
         : "bg-white/60 shadow-sm border border-transparent hover:border-[#E8D5C4]/30"
     }`}
   >
     <div className="flex justify-between items-start mb-2 md:mb-4">
-      <p className="text-[8px] md:text-[10px] uppercase text-gray-400 font-bold tracking-widest">
+      <p className="text-[9px] md:text-[10px] uppercase text-gray-400 font-bold tracking-widest flex-1 pr-2 leading-tight">
         {label}
       </p>
-      {Icon && <Icon size={14} style={{ color }} className="hidden md:block" />}
+      {Icon && (
+        <div className={`p-2 rounded-xl ${highlight ? 'bg-[#FAF7F2]' : 'bg-white'}`}>
+          <Icon size={16} style={{ color }} />
+        </div>
+      )}
     </div>
-    <div
-      className="text-base md:text-xl font-serif font-bold"
-      style={{ color }}
-    >
-      {value}
+    <div>
+      <div
+        className="text-lg md:text-2xl font-serif font-black tracking-tight"
+        style={{ color }}
+      >
+        {value}
+      </div>
+      {(subValue || percentage != null) && (
+        <div className="flex items-center gap-2 mt-1.5 md:mt-2">
+          {percentage != null && (
+            <span 
+              className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${
+                invertColor 
+                  ? 'bg-rose-50 text-rose-500' // Pour les dépenses (rouge)
+                  : parseFloat(percentage) >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-500' // Pour les marges (vert si +, rouge si -)
+              }`}
+            >
+              {parseFloat(percentage) > 0 && !invertColor ? '+' : ''}{percentage}%
+            </span>
+          )}
+          {subValue && (
+            <span className="text-[10px] font-bold text-[#B8A99A]">
+              {subValue}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   </div>
 );
@@ -777,22 +803,19 @@ const MainApp = ({ user }) => {
       );
     });
 
-    const totalRevenue = dOrders.reduce(
-      (sum, o) => sum + (parseFloat(o.totalVente) || 0),
-      0
-    );
-    const totalBenefitBrut = dOrders.reduce(
-      (sum, o) => sum + (parseFloat(o.benefit) || 0),
-      0
-    );
-    const totalSponsors = filteredSponsors.reduce(
-      (sum, s) => sum + (parseFloat(s.amountDA) || 0),
-      0
-    );
-    const totalExpenses = filteredExpenses.reduce(
-      (sum, e) => sum + (parseFloat(e.amountDA) || 0),
-      0
-    );
+    const totalRevenue = dOrders.reduce((sum, o) => sum + (parseFloat(o.totalVente) || 0), 0);
+    const totalBenefitBrut = dOrders.reduce((sum, o) => sum + (parseFloat(o.benefit) || 0), 0);
+    const totalSponsors = filteredSponsors.reduce((sum, s) => sum + (parseFloat(s.amountDA) || 0), 0);
+    const totalExpenses = filteredExpenses.reduce((sum, e) => sum + (parseFloat(e.amountDA) || 0), 0);
+
+    const netBenefit = totalBenefitBrut - totalSponsors - totalExpenses;
+    const ordersCount = dOrders.length;
+
+    // --- NOUVEAUX CALCULS DES POURCENTAGES ---
+    const netMarginPercentage = totalRevenue > 0 ? ((netBenefit / totalRevenue) * 100).toFixed(1) : 0;
+    const brutMarginPercentage = totalRevenue > 0 ? ((totalBenefitBrut / totalRevenue) * 100).toFixed(1) : 0;
+    const expensesPercentage = totalRevenue > 0 ? (((totalSponsors + totalExpenses) / totalRevenue) * 100).toFixed(1) : 0;
+    const averageOrderValue = ordersCount > 0 ? totalRevenue / ordersCount : 0;
 
     const clientMap = {};
     dOrders.forEach((o) => {
@@ -810,9 +833,13 @@ const MainApp = ({ user }) => {
       totalBenefitBrut,
       totalSponsors,
       totalExpenses,
-      netBenefit: totalBenefitBrut - totalSponsors - totalExpenses,
-      ordersCount: dOrders.length,
+      netBenefit,
+      ordersCount,
       topClients,
+      netMarginPercentage,
+      brutMarginPercentage,
+      expensesPercentage,
+      averageOrderValue
     };
   }, [orders, sponsors, expenses, filterYear, filterMonth]);
 
@@ -1292,31 +1319,43 @@ const MainApp = ({ user }) => {
 
         {activeTab === "dashboard" && (
           <div className="space-y-4 md:space-y-8 animate-in fade-in">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
               <StatCard
-                label="CA"
+                label="Chiffre d'Affaires"
                 value={formatDA(stats.totalRevenue)}
+                subValue={`${stats.ordersCount} ventes`}
                 color="#8D7B68"
                 highlight
                 icon={TrendingUp}
               />
               <StatCard
+                label="Panier Moyen"
+                value={formatDA(stats.averageOrderValue)}
+                color="#D4B996"
+                icon={Package}
+              />
+              <StatCard
                 label="Marge Brute"
                 value={formatDA(stats.totalBenefitBrut)}
+                percentage={stats.brutMarginPercentage}
                 color="#22C55E"
                 icon={PieChart}
               />
               <StatCard
-                label="Bénéfice Net"
-                value={formatDA(stats.netBenefit)}
-                color={stats.netBenefit > 0 ? "#22C55E" : "#EF4444"}
-                icon={DollarSign}
-              />
-              <StatCard
-                label="Dépenses Pub/Frais"
+                label="Dépenses & Pubs"
                 value={formatDA(stats.totalSponsors + stats.totalExpenses)}
+                percentage={stats.expensesPercentage}
+                invertColor={true} 
                 color="#EF4444"
                 icon={Megaphone}
+              />
+              <StatCard
+                label="Bénéfice Net"
+                value={formatDA(stats.netBenefit)}
+                percentage={stats.netMarginPercentage}
+                color={stats.netBenefit > 0 ? "#22C55E" : "#EF4444"}
+                highlight
+                icon={DollarSign}
               />
             </div>
 

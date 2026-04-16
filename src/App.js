@@ -1358,6 +1358,28 @@ const MainApp = ({ user }) => {
     </div>
   );
 }
+const App = () => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#FDFBF7]">
+        <Loader2 className="animate-spin text-[#8D7B68]" size={40} />
+      </div>
+    );
+  }
+
+  return user ? <MainApp user={user} /> : <Login />;
+};
 export default App;
 
 // --- SUB COMPONENTS (MODALS) ---

@@ -2786,6 +2786,29 @@ const OrderModal = ({
   );
   const [isSaving, setIsSaving] = useState(false);
 
+  // --- NOUVEAUTÉ : AUTO-CORRECTION À L'OUVERTURE ---
+  // Dès que la fenêtre s'ouvre, on vérifie si des articles anciens ont un poids
+  // mais sont restés bloqués sur "En attente". Si oui, on les passe en "Reçu".
+  useEffect(() => {
+    let hasChanges = false;
+    const correctedItems = orderItems.map((item) => {
+      if (
+        parseFloat(item.weightG) > 0 &&
+        (!item.status || item.status === "En attente" || item.status === "A commander")
+      ) {
+        hasChanges = true;
+        return { ...item, status: "Reçu" };
+      }
+      return item;
+    });
+
+    if (hasChanges) {
+      setOrderItems(correctedItems);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); 
+  // --------------------------------------------------
+
   const updateOrderNumber = (selectedDate) => {
     if (editingOrder) return;
     const prefix = `${selectedDate.slice(2, 4)}${selectedDate.slice(5, 7)}-`;
@@ -2829,7 +2852,6 @@ const OrderModal = ({
     calculateTotals(orderItems, 0, new Date()).venteTotal +
     (parseFloat(shippingNational) || 0);
 
-  // NOUVEAU : Calcul du montant des articles physiquement en Algérie
   const montantEnAlgerie = orderItems
     .filter(
       (item) =>
@@ -3090,7 +3112,6 @@ const OrderModal = ({
                         <span className="text-[9px] font-bold text-gray-400 hidden lg:inline">
                           Poids(g)
                         </span>
-                        {/* NOUVEAU : Changement de statut automatique basé sur le poids */}
                         <input
                           type="number"
                           placeholder="g"
@@ -3102,7 +3123,8 @@ const OrderModal = ({
                               orderItems.map((oi) => {
                                 if (oi.id === item.id) {
                                   let newStatus = oi.status;
-                                  if (parseFloat(val) > 0 && oi.status === "En attente") {
+                                  // L'auto-correction lors de la frappe
+                                  if (parseFloat(val) > 0 && (!oi.status || oi.status === "En attente" || oi.status === "A commander")) {
                                     newStatus = "Reçu";
                                   } else if ((!val || parseFloat(val) === 0) && oi.status === "Reçu") {
                                     newStatus = "En attente";
@@ -3198,7 +3220,6 @@ const OrderModal = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0">
-              {/* HISTORIQUE DES VERSEMENTS */}
               <div className="bg-white p-4 md:p-5 rounded-2xl md:rounded-[1.5rem] border border-[#E8D5C4]/40 flex flex-col h-full shadow-sm">
                 <h4 className="text-[10px] text-[#B8A99A] font-bold uppercase tracking-widest mb-3 border-b border-gray-50 pb-2">
                   Historique des Versements
@@ -3273,7 +3294,6 @@ const OrderModal = ({
                 </div>
               </div>
 
-              {/* LIVRAISON & RECAP */}
               <div className="bg-[#FAF7F2]/60 p-4 md:p-5 rounded-2xl md:rounded-[1.5rem] border border-[#E8D5C4]/40 flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-center mb-3 md:mb-2">
@@ -3313,7 +3333,6 @@ const OrderModal = ({
                 </div>
 
                 <div className="space-y-2 mt-4">
-                  {/* NOUVEAU : Affichage des articles en Algérie */}
                   <div className="flex justify-between text-[11px] font-bold text-blue-600/80 bg-blue-50/50 p-2 rounded-lg border border-blue-100 mb-2">
                     <span>Montant des articles en Algérie :</span>
                     <span>{formatDA(montantEnAlgerie)}</span>

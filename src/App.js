@@ -263,12 +263,18 @@ const formatDA = (val) =>
     maximumFractionDigits: 2,
   }) + " DA";
 
-const calculateReste = (order) => {
+const calculateReste = (order, customerCredit = 0) => {
   if (order.status === "Payée" || order.status === "Payée et livrée") return 0;
-  const total =
-    (parseFloat(order.totalVente) || 0) +
-    (parseFloat(order.shippingNational) || 0);
-  return Math.max(0, total - (parseFloat(order.advancePayment) || 0));
+  
+  // Total = Articles (non retournés) + Frais de livraison
+  const totalItems = (order.items || []).reduce((sum, item) => {
+    return sum + (item.status === "Retourné Fournisseur" ? 0 : (parseFloat(item.priceVente) || 0));
+  }, 0);
+
+  const totalOrder = totalItems + (parseFloat(order.shippingNational) || 0);
+  const totalAdvance = parseFloat(order.advancePayment) || 0;
+  
+  return Math.max(0, totalOrder - totalAdvance - customerCredit);
 };
 
 // --- UI COMPONENTS ---
@@ -893,33 +899,35 @@ const MainApp = ({ user }) => {
   }, [orders, sponsors, expenses, filterYear]);
 
   const handleSaveOrder = async (e, setIsSaving) => {
-    e.preventDefault();
-    setIsSaving(true);
-    try {
-      const formData = new FormData(e.target);
-      const customer = customers.find(
-        (c) => c.id === formData.get("customerId")
-      );
-      const selectedDate = new Date(formData.get("orderDate") || new Date());
-      const t = calculateTotals(orderItems, shippingNational, selectedDate);
-      const totalAdvance = orderPayments.reduce(
-        (sum, p) => sum + parseFloat(p.amount || 0),
-        0
-      );
+  // ... (récupération des données existantes)
+  
+  const totalVenteFinal = t.venteTotal; 
+  const totalAvances = totalAdvance;
+  
+  // 1. Gestion du Portefeuille si retour ou annulation
+  if (totalAvances > (totalVenteFinal + shippingNational)) {
+    const excedent = totalAvances - (totalVenteFinal + shippingNational);
+    const customerRef = doc(db, "artifacts", appId, "public", "data", "customers", customerId);
+    // On met à jour le crédit de la cliente (nécessite de lire le crédit actuel avant)
+    await updateDoc(customerRef, { walletDA: (customer?.walletDA || 0) + excedent });
+    showToast(`Excédent de ${excedent} DA ajouté au portefeuille cliente`);
+  }
 
-      const data = {
-        orderNumber: formData.get("orderNumber"),
-        customerId: formData.get("customerId"),
-        customerName: customer?.name || "Inconnue",
-        items: t.processed,
-        payments: orderPayments,
-        shippingNational: parseFloat(shippingNational) || 0,
-        advancePayment: totalAdvance,
-        totalVente: t.venteTotal,
-        benefit: t.benefit,
-        status: orderStatus,
-        date: Timestamp.fromDate(selectedDate),
-      };
+  // 2. Génération automatique des dépenses de retour
+  const itemsRetournes = orderItems.filter(it => it.status === "Retourné Fournisseur");
+  for (const item of itemsRetournes) {
+    if (item.fraisRetourLivreur > 0) {
+      await addDoc(collection(db, "artifacts", appId, "public", "data", "expenses"), {
+        label: `Retour Livreur - CMD ${orderNumber}`,
+        amountDA: parseFloat(item.fraisRetourLivreur),
+        date: new Date().toISOString().split('T')[0],
+        type: "Retour"
+      });
+    }
+  }
+  
+  // ... (suite de la sauvegarde)
+};
 
       if (editingOrder) {
         await updateDoc(

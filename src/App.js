@@ -2463,7 +2463,7 @@ const MainApp = ({ user }) => {
             </div>
           </div>
         )}
-      </main> {/*
+      </main>
 
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-xl border-t border-[#E8D5C4]/50 flex justify-around items-center px-2 pt-2 pb-[max(16px,env(safe-area-inset-bottom))] z-[900] shadow-[0_-10px_40px_rgba(141,123,104,0.1)] print:hidden">
         <button

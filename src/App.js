@@ -2862,9 +2862,6 @@ const OrderModal = ({
   );
   const [isSaving, setIsSaving] = useState(false);
 
-  // --- NOUVEAUTÉ : AUTO-CORRECTION À L'OUVERTURE ---
-  // Dès que la fenêtre s'ouvre, on vérifie si des articles anciens ont un poids
-  // mais sont restés bloqués sur "En attente". Si oui, on les passe en "Reçu".
   useEffect(() => {
     let hasChanges = false;
     const correctedItems = orderItems.map((item) => {
@@ -2882,7 +2879,6 @@ const OrderModal = ({
       setOrderItems(correctedItems);
     }
   }, []); 
-  // --------------------------------------------------
 
   const updateOrderNumber = (selectedDate) => {
     if (editingOrder) return;
@@ -3199,7 +3195,6 @@ const OrderModal = ({
                               orderItems.map((oi) => {
                                 if (oi.id === item.id) {
                                   let newStatus = oi.status;
-                                  // L'auto-correction lors de la frappe
                                   if (parseFloat(val) > 0 && (!oi.status || oi.status === "En attente" || oi.status === "A commander")) {
                                     newStatus = "Reçu";
                                   } else if ((!val || parseFloat(val) === 0) && oi.status === "Reçu") {
@@ -3267,30 +3262,221 @@ const OrderModal = ({
                         </button>
                       </div>
                     </div>
-                            {item.status === "Retourné Fournisseur" && (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3 p-3 bg-red-50/50 rounded-xl border border-red-100 animate-in fade-in">
-      <div className="space-y-1">
-        <label className="text-[9px] font-bold text-red-400 uppercase tracking-widest ml-1">Frais Retour Livreur (DA)</label>
-        <input 
-          type="number" 
-          placeholder="Ex: 400"
-          className="w-full p-2.5 rounded-lg text-xs font-bold outline-none border border-transparent focus:border-red-200 bg-white"
-          value={item.fraisRetourLivreur || ""}
-          onChange={(e) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, fraisRetourLivreur: e.target.value } : oi))}
-        />
-      </div>
-      <div className="space-y-1">
-        <label className="text-[9px] font-bold text-red-400 uppercase tracking-widest ml-1">Frais Retour Fournisseur (DA)</label>
-        <input 
-          type="number" 
-          placeholder="Ex: 0"
-          className="w-full p-2.5 rounded-lg text-xs font-bold outline-none border border-transparent focus:border-red-200 bg-white"
-          value={item.fraisRetourFournisseur || ""}
-          onChange={(e) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, fraisRetourFournisseur: e.target.value } : oi))}
-        />
+                    {item.status === "Retourné Fournisseur" && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3 p-3 bg-red-50/50 rounded-xl border border-red-100 animate-in fade-in">
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-red-400 uppercase tracking-widest ml-1">Frais Retour Livreur (DA)</label>
+                          <input 
+                            type="number" 
+                            placeholder="Ex: 400"
+                            className="w-full p-2.5 rounded-lg text-xs font-bold outline-none border border-transparent focus:border-red-200 bg-white"
+                            value={item.fraisRetourLivreur || ""}
+                            onChange={(e) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, fraisRetourLivreur: e.target.value } : oi))}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-red-400 uppercase tracking-widest ml-1">Frais Retour Fournisseur (DA)</label>
+                          <input 
+                            type="number" 
+                            placeholder="Ex: 0"
+                            className="w-full p-2.5 rounded-lg text-xs font-bold outline-none border border-transparent focus:border-red-200 bg-white"
+                            value={item.fraisRetourFournisseur || ""}
+                            onChange={(e) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, fraisRetourFournisseur: e.target.value } : oi))}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setOrderItems([
+                    ...orderItems,
+                    {
+                      id: Date.now(),
+                      name: "",
+                      category: "",
+                      size: "",
+                      color: "",
+                      weightG: 0,
+                      priceAchatEuro: 0,
+                      priceVente: 0,
+                      arrivageId: defaultArrivage,
+                      status: "En attente",
+                    },
+                  ]);
+                }}
+                className="w-full mt-3 shrink-0 py-4 md:py-3 border border-dashed border-[#E8D5C4] text-[#8D7B68] hover:bg-[#FAF7F2] rounded-xl font-bold text-xs flex items-center justify-center gap-2 bg-white/50 shadow-sm"
+              >
+                <Plus size={16} /> Ajouter un article
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0">
+              <div className="bg-white p-4 md:p-5 rounded-2xl md:rounded-[1.5rem] border border-[#E8D5C4]/40 flex flex-col h-full shadow-sm">
+                <h4 className="text-[10px] text-[#B8A99A] font-bold uppercase tracking-widest mb-3 border-b border-gray-50 pb-2">
+                  Historique des Versements
+                </h4>
+                <div className="flex-1 overflow-y-auto space-y-2 mb-3 min-h-[80px] custom-scrollbar">
+                  {orderPayments.length === 0 ? (
+                    <p className="text-[10px] text-gray-400 italic text-center pt-4">
+                      Aucun versement enregistré.
+                    </p>
+                  ) : (
+                    orderPayments.map((p) => (
+                      <div
+                        key={p.id}
+                        className="flex justify-between items-center bg-green-50/50 p-2 rounded-lg border border-green-100/50"
+                      >
+                        <span className="text-[10px] font-bold text-gray-500">
+                          {p.date}
+                        </span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-black text-green-600">
+                            {formatDA(p.amount)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setOrderPayments(
+                                orderPayments.filter((pay) => pay.id !== p.id)
+                              )
+                            }
+                            className="text-red-300 hover:text-red-500"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="flex gap-2 bg-gray-50 p-2 rounded-xl border border-gray-100">
+                  <input
+                    type="date"
+                    value={newPaymentDate}
+                    onChange={(e) => setNewPaymentDate(e.target.value)}
+                    className="w-24 p-2 rounded-lg text-[10px] outline-none text-gray-600 font-bold border border-transparent focus:border-[#E8D5C4]"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Montant DA"
+                    value={newPaymentAmount}
+                    onChange={(e) => setNewPaymentAmount(e.target.value)}
+                    className="flex-1 p-2 rounded-lg text-xs outline-none font-bold text-[#8D7B68] border border-transparent focus:border-[#E8D5C4]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (newPaymentAmount) {
+                        setOrderPayments([
+                          ...orderPayments,
+                          {
+                            id: Date.now(),
+                            amount: parseFloat(newPaymentAmount),
+                            date: newPaymentDate,
+                          },
+                        ]);
+                        setNewPaymentAmount("");
+                      }
+                    }}
+                    className="bg-green-500 text-white p-2 rounded-lg shadow-sm"
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-[#FAF7F2]/60 p-4 md:p-5 rounded-2xl md:rounded-[1.5rem] border border-[#E8D5C4]/40 flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-center mb-3 md:mb-2">
+                    <span className="text-[10px] text-[#B8A99A] font-bold uppercase tracking-widest">
+                      Livraison
+                    </span>
+                    <div className="flex flex-col items-end">
+                      <div className="flex items-center gap-2 bg-white px-3 md:px-2 py-1.5 md:py-1 rounded-lg border border-[#E8D5C4]/50 shadow-sm">
+                        <span className="text-xs font-bold text-[#8D7B68]">
+                          +
+                        </span>
+                        <input
+                          type="number"
+                          value={shippingNational}
+                          onChange={(e) => setShippingNational(e.target.value)}
+                          className="w-16 outline-none text-right font-bold text-sm md:text-xs text-[#8D7B68]"
+                          placeholder="0.00"
+                        />
+                        <span className="text-[9px] font-bold text-[#D4B996]">
+                          DA
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-1.5 mb-4 overflow-x-auto pb-1 custom-scrollbar">
+                    {[0, 400, 600, 800, 1000].map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setShippingNational(p)}
+                        className="shrink-0 text-[10px] font-bold bg-white border border-[#E8D5C4]/60 px-3 md:px-2 py-1.5 md:py-1 rounded-lg text-[#8D7B68] shadow-sm"
+                      >
+                        {p === 0 ? "Gratuit" : p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2 mt-4">
+                  <div className="flex justify-between text-[11px] font-bold text-blue-600/80 bg-blue-50/50 p-2 rounded-lg border border-blue-100 mb-2">
+                    <span>Montant des articles en Algérie :</span>
+                    <span>{formatDA(montantEnAlgerie)}</span>
+                  </div>
+
+                  <div className="flex justify-between text-xs font-bold text-gray-500">
+                    <span>Total Panier + Liv :</span>
+                    <span>{formatDA(totalVenteEtLivraison)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs font-bold text-green-600">
+                    <span>Total Avances :</span>
+                    <span>- {formatDA(totalAdvance)}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-3 border-t border-[#E8D5C4]/40 mt-2">
+                    <span className="text-[11px] text-[#8D7B68] font-black uppercase tracking-widest">
+                      Reste à Payer
+                    </span>
+                    <span
+                      className={`text-2xl font-serif font-bold ${
+                        resteToPay > 0 ? "text-[#8D7B68]" : "text-green-500"
+                      }`}
+                    >
+                      {formatDA(resteToPay)}
+                    </span>
+                  </div>
+                  {isFullyPaidStatus && (
+                    <p className="text-[9px] text-green-500 font-bold text-right italic">
+                      Mis à 0 automatiquement car statut Payée.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="shrink-0 pt-2 pb-2">
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="w-full flex justify-center items-center gap-3 py-4 rounded-xl md:rounded-[1.5rem] text-white font-serif text-lg md:text-xl bg-[#8D7B68] shadow-lg font-bold uppercase tracking-widest transition-transform hover:-translate-y-1 disabled:opacity-50 disabled:hover:translate-y-0"
+            >
+              {isSaving && <Loader2 size={24} className="animate-spin" />}
+              {isSaving ? "Sauvegarde..." : "Valider la commande"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
-  )}
+  );
+};
               <button
                 type="button"
                 onClick={() => {

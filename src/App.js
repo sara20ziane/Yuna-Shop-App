@@ -351,97 +351,20 @@ function Login() {
           border: "1px solid #EBE5D9",
         }}
       >
-        <h2
-          style={{
-            color: "#8D7B68",
-            fontWeight: "bold",
-            marginBottom: "5px",
-            fontSize: "20px",
-            fontFamily: "serif",
-            letterSpacing: "2px",
-          }}
-        >
+        <h2 style={{ color: "#8D7B68", fontWeight: "bold", marginBottom: "5px", fontSize: "20px", fontFamily: "serif", letterSpacing: "2px", }}>
           YUNA'S SHOP
         </h2>
-        <p
-          style={{
-            color: "#B8A99A",
-            fontSize: "10px",
-            textTransform: "uppercase",
-            letterSpacing: "1px",
-            marginBottom: "20px",
-            fontWeight: "bold",
-          }}
-        >
+        <p style={{ color: "#B8A99A", fontSize: "10px", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "20px", fontWeight: "bold", }}>
           Suite Elite de Sara
         </p>
-        <form
-          onSubmit={handleLogin}
-          style={{ display: "flex", flexDirection: "column", gap: "10px" }}
-        >
-          <input
-            name="email"
-            type="email"
-            placeholder="Email admin"
-            required
-            style={{
-              padding: "12px",
-              border: "1px solid #EBE5D9",
-              borderRadius: "12px",
-              outline: "none",
-              backgroundColor: "#FAF7F2",
-              fontSize: "14px",
-              color: "#4A3F35",
-              fontWeight: "bold",
-            }}
-          />
-          <input
-            name="password"
-            type="password"
-            placeholder="Mot de passe"
-            required
-            style={{
-              padding: "12px",
-              border: "1px solid #EBE5D9",
-              borderRadius: "12px",
-              outline: "none",
-              backgroundColor: "#FAF7F2",
-              fontSize: "14px",
-              color: "#4A3F35",
-              fontWeight: "bold",
-            }}
-          />
-          <button
-            type="submit"
-            style={{
-              padding: "12px",
-              backgroundColor: "#8D7B68",
-              color: "white",
-              border: "none",
-              borderRadius: "12px",
-              cursor: "pointer",
-              fontSize: "12px",
-              marginTop: "10px",
-              textTransform: "uppercase",
-              fontWeight: "bold",
-              letterSpacing: "1px",
-            }}
-          >
+        <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          <input name="email" type="email" placeholder="Email admin" required style={{ padding: "12px", border: "1px solid #EBE5D9", borderRadius: "12px", outline: "none", backgroundColor: "#FAF7F2", fontSize: "14px", color: "#4A3F35", fontWeight: "bold", }} />
+          <input name="password" type="password" placeholder="Mot de passe" required style={{ padding: "12px", border: "1px solid #EBE5D9", borderRadius: "12px", outline: "none", backgroundColor: "#FAF7F2", fontSize: "14px", color: "#4A3F35", fontWeight: "bold", }} />
+          <button type="submit" style={{ padding: "12px", backgroundColor: "#8D7B68", color: "white", border: "none", borderRadius: "12px", cursor: "pointer", fontSize: "12px", marginTop: "10px", textTransform: "uppercase", fontWeight: "bold", letterSpacing: "1px", }}>
             Accéder au CRM
           </button>
         </form>
-        {error && (
-          <p
-            style={{
-              color: "#EF4444",
-              fontSize: "12px",
-              marginTop: "10px",
-              fontWeight: "bold",
-            }}
-          >
-            {error}
-          </p>
-        )}
+        {error && <p style={{ color: "#EF4444", fontSize: "12px", marginTop: "10px", fontWeight: "bold", }}>{error}</p>}
       </div>
     </div>
   );
@@ -518,26 +441,13 @@ const MainApp = ({ user }) => {
   const [arrivageDate, setArrivageDate] = useState("");
 
   useEffect(() => {
-    const path = (coll) =>
-      collection(db, "artifacts", appId, "public", "data", coll);
-    const unsubC = onSnapshot(path("customers"), (s) =>
-      setCustomers(s.docs.map((d) => ({ id: d.id, ...d.data() })))
-    );
-    const unsubO = onSnapshot(path("orders"), (s) =>
-      setOrders(s.docs.map((d) => ({ id: d.id, ...d.data() })))
-    );
-    const unsubA = onSnapshot(path("arrivages"), (s) =>
-      setArrivages(s.docs.map((d) => ({ id: d.id, ...d.data() })))
-    );
-    const unsubR = onSnapshot(path("currencyRates"), (s) =>
-      setCurrencyRates(s.docs.map((d) => ({ id: d.id, ...d.data() })))
-    );
-    const unsubS = onSnapshot(path("sponsors"), (s) =>
-      setSponsors(s.docs.map((d) => ({ id: d.id, ...d.data() })))
-    );
-    const unsubE = onSnapshot(path("expenses"), (s) =>
-      setExpenses(s.docs.map((d) => ({ id: d.id, ...d.data() })))
-    );
+    const path = (coll) => collection(db, "artifacts", appId, "public", "data", coll);
+    const unsubC = onSnapshot(path("customers"), (s) => setCustomers(s.docs.map((d) => ({ id: d.id, ...d.data() }))));
+    const unsubO = onSnapshot(path("orders"), (s) => setOrders(s.docs.map((d) => ({ id: d.id, ...d.data() }))));
+    const unsubA = onSnapshot(path("arrivages"), (s) => setArrivages(s.docs.map((d) => ({ id: d.id, ...d.data() }))));
+    const unsubR = onSnapshot(path("currencyRates"), (s) => setCurrencyRates(s.docs.map((d) => ({ id: d.id, ...d.data() }))));
+    const unsubS = onSnapshot(path("sponsors"), (s) => setSponsors(s.docs.map((d) => ({ id: d.id, ...d.data() }))));
+    const unsubE = onSnapshot(path("expenses"), (s) => setExpenses(s.docs.map((d) => ({ id: d.id, ...d.data() }))));
     const unsubConfig = onSnapshot(
       doc(db, "artifacts", appId, "public", "data", "config", "global"),
       (docSnap) => {
@@ -548,16 +458,11 @@ const MainApp = ({ user }) => {
         }
       }
     );
-    return () => {
-      unsubC(); unsubO(); unsubA(); unsubR(); unsubS(); unsubE(); unsubConfig();
-    };
+    return () => { unsubC(); unsubO(); unsubA(); unsubR(); unsubS(); unsubE(); unsubConfig(); };
   }, []);
 
   const saveConfig = async (newConfig) => {
-    await setDoc(
-      doc(db, "artifacts", appId, "public", "data", "config", "global"),
-      newConfig
-    );
+    await setDoc(doc(db, "artifacts", appId, "public", "data", "config", "global"), newConfig);
     showToast("Configuration sauvegardée !");
   };
 
@@ -569,20 +474,9 @@ const MainApp = ({ user }) => {
 
   const getRateForDate = (dateInput) => {
     if (!currencyRates.length) return 250;
-    const targetDate =
-      dateInput instanceof Date
-        ? dateInput
-        : dateInput?.toDate
-        ? dateInput.toDate()
-        : new Date(dateInput);
-    const sorted = [...currencyRates].sort(
-      (a, b) => new Date(b.date) - new Date(a.date)
-    );
-    return (
-      sorted.find((r) => new Date(r.date) <= targetDate)?.rate ||
-      sorted[0]?.rate ||
-      250
-    );
+    const targetDate = dateInput instanceof Date ? dateInput : dateInput?.toDate ? dateInput.toDate() : new Date(dateInput);
+    const sorted = [...currencyRates].sort((a, b) => new Date(b.date) - new Date(a.date));
+    return sorted.find((r) => new Date(r.date) <= targetDate)?.rate || sorted[0]?.rate || 250;
   };
 
   const getArrivageStats = (arrivageId) => {
@@ -593,24 +487,18 @@ const MainApp = ({ user }) => {
     return { rate, weightKg };
   };
 
-  // --- MISE À JOUR : Calculs tenant compte des retours fournisseurs ---
+  // --- CALCULS (Avec retours fournisseurs) ---
   const calculateTotals = (items, shipNat, orderDate) => {
     const rateEur = getRateForDate(orderDate || new Date());
     let venteTotal = 0, costOfGoods = 0;
     
     const processed = items?.map((it) => {
       const stats = getArrivageStats(it.arrivageId);
-      
       const isRefunded = it.status === "Remboursé (Fourn.)";
       const isCanceled = it.status === "Annulé";
 
-      // Si remboursé ou annulé, le prix d'achat devient 0. Sinon, prix normal.
       const effectiveAchatEur = isRefunded || isCanceled ? 0 : (parseFloat(it.priceAchatEuro) || 0);
-      
-      // Si remboursé, le poids compte (car payé à la livraison). Si annulé avant envoi, poids = 0.
       const effectiveWeight = isCanceled ? 0 : (parseFloat(it.weightG) || 0);
-      
-      // Si remboursé ou annulé, on ne facture pas la cliente
       const effectiveVente = isRefunded || isCanceled ? 0 : (parseFloat(it.priceVente) || 0);
 
       const itAchatDA = effectiveAchatEur * rateEur;
@@ -656,13 +544,9 @@ const MainApp = ({ user }) => {
     return orders
       .filter((o) => {
         const d = o.date?.toDate ? o.date.toDate() : new Date(o.date);
-        const isSameMonth =
-          d.getFullYear() === filterYear &&
-          (filterMonth === 0 || d.getMonth() + 1 === filterMonth);
+        const isSameMonth = d.getFullYear() === filterYear && (filterMonth === 0 || d.getMonth() + 1 === filterMonth);
         const searchLower = (globalSearch || orderSearch).toLowerCase();
-        const matchBasic =
-          (o.orderNumber || "").toLowerCase().includes(searchLower) ||
-          (o.customerName || "").toLowerCase().includes(searchLower);
+        const matchBasic = (o.orderNumber || "").toLowerCase().includes(searchLower) || (o.customerName || "").toLowerCase().includes(searchLower);
         const matchItems = (o.items || []).some(
           (item) =>
             (item.name || "").toLowerCase().includes(searchLower) ||
@@ -685,42 +569,27 @@ const MainApp = ({ user }) => {
     return arrivages
       .filter((a) => {
         const d = new Date(a.date || new Date());
-        return (
-          d.getFullYear() === filterYear &&
-          (filterMonth === 0 || d.getMonth() + 1 === filterMonth)
-        );
+        return d.getFullYear() === filterYear && (filterMonth === 0 || d.getMonth() + 1 === filterMonth);
       })
       .sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [arrivages, filterYear, filterMonth]);
 
   const totalWeightFilteredArrivages = useMemo(() => {
-    return filteredArrivages.reduce(
-      (sum, arr) => sum + (parseFloat(arr.totalWeightKg) || 0),
-      0
-    );
+    return filteredArrivages.reduce((sum, arr) => sum + (parseFloat(arr.totalWeightKg) || 0), 0);
   }, [filteredArrivages]);
 
   const stats = useMemo(() => {
     const dOrders = orders.filter((o) => {
       const d = o.date?.toDate ? o.date.toDate() : new Date(o.date);
-      return (
-        d.getFullYear() === filterYear &&
-        (filterMonth === 0 || d.getMonth() + 1 === filterMonth)
-      );
+      return d.getFullYear() === filterYear && (filterMonth === 0 || d.getMonth() + 1 === filterMonth);
     });
     const filteredSponsors = sponsors.filter((s) => {
       const d = new Date(s.date);
-      return (
-        d.getFullYear() === filterYear &&
-        (filterMonth === 0 || d.getMonth() + 1 === filterMonth)
-      );
+      return d.getFullYear() === filterYear && (filterMonth === 0 || d.getMonth() + 1 === filterMonth);
     });
     const filteredExpenses = expenses.filter((e) => {
       const d = new Date(e.date);
-      return (
-        d.getFullYear() === filterYear &&
-        (filterMonth === 0 || d.getMonth() + 1 === filterMonth)
-      );
+      return d.getFullYear() === filterYear && (filterMonth === 0 || d.getMonth() + 1 === filterMonth);
     });
 
     const totalRevenue = dOrders.reduce((sum, o) => sum + (parseFloat(o.totalVente) || 0), 0);
@@ -743,9 +612,7 @@ const MainApp = ({ user }) => {
       clientMap[o.customerId].total += parseFloat(o.totalVente) || 0;
       clientMap[o.customerId].count += 1;
     });
-    const topClients = Object.values(clientMap)
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
+    const topClients = Object.values(clientMap).sort((a, b) => b.total - a.total).slice(0, 5);
 
     return {
       totalRevenue, totalBenefitBrut, totalSponsors, totalExpenses,
@@ -755,9 +622,7 @@ const MainApp = ({ user }) => {
   }, [orders, sponsors, expenses, filterYear, filterMonth]);
 
   const chartData = useMemo(() => {
-    const months = [
-      "Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc",
-    ];
+    const months = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
     return months.map((monthName, index) => {
       const monthNum = index + 1;
       const mOrders = orders.filter((o) => {
@@ -775,9 +640,7 @@ const MainApp = ({ user }) => {
 
       const ca = mOrders.reduce((sum, o) => sum + (parseFloat(o.totalVente) || 0), 0);
       const benefBrut = mOrders.reduce((sum, o) => sum + (parseFloat(o.benefit) || 0), 0);
-      const frais =
-        mSponsors.reduce((sum, s) => sum + (parseFloat(s.amountDA) || 0), 0) +
-        mExpenses.reduce((sum, e) => sum + (parseFloat(e.amountDA) || 0), 0);
+      const frais = mSponsors.reduce((sum, s) => sum + (parseFloat(s.amountDA) || 0), 0) + mExpenses.reduce((sum, e) => sum + (parseFloat(e.amountDA) || 0), 0);
       const net = benefBrut - frais;
 
       return { name: monthName, CA: ca, Net: net };
@@ -791,10 +654,8 @@ const MainApp = ({ user }) => {
       if(!customer) return;
       const newWallet = (parseFloat(customer.wallet) || 0) + amountChange;
       
-      // Update Customer DB
       await updateDoc(doc(db, "artifacts", appId, "public", "data", "customers", customer.id), { wallet: newWallet });
       
-      // Update Order Payments State
       if (orderPaymentDelta !== 0 && setPayments && currentPayments) {
           setPayments([...currentPayments, {
               id: Date.now(),
@@ -861,7 +722,7 @@ const MainApp = ({ user }) => {
       deliveryMode: formData.get("deliveryMode"),
       stopdeskName: formData.get("stopdeskName") || "",
       platform: formData.get("platform"),
-      wallet: parseFloat(formData.get("wallet")) || 0, // NOUVEAU
+      wallet: parseFloat(formData.get("wallet")) || 0,
       createdAt: editingCustomer ? editingCustomer.createdAt : Timestamp.now(),
     };
     if (editingCustomer) {
@@ -1012,8 +873,6 @@ const MainApp = ({ user }) => {
 
       <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-32 md:pb-8 relative custom-scrollbar bg-[#FDFBF7] print:hidden">
         <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          
-          {/* Bloc de Gauche : Titre et Boutons Mobiles */}
           <div className="flex items-center gap-2 w-full md:w-auto justify-between">
             <div className="flex items-center gap-2">
               <div className="md:hidden w-8 h-8 bg-[#8D7B68] rounded-xl flex items-center justify-center text-white shadow-sm">
@@ -1028,8 +887,6 @@ const MainApp = ({ user }) => {
                 )}
               </h2>
             </div>
-            
-            {/* Boutons visibles uniquement sur Mobile */}
             <div className="flex gap-2 md:hidden">
               <button onClick={() => setShowCalculator(true)} className="p-2.5 text-white bg-[#8D7B68] rounded-xl shadow-sm hover:scale-105 transition-transform" title="Simulateur de prix">
                 <Calculator size={16} />
@@ -1039,27 +896,14 @@ const MainApp = ({ user }) => {
               </button>
             </div>
           </div>
-
-          {/* Bloc de Droite : Bouton PC, Recherche et Filtres */}
           <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
-            {/* Bouton Calculatrice visible uniquement sur PC */}
             <button onClick={() => setShowCalculator(true)} className="hidden md:flex px-4 py-2.5 text-white bg-[#8D7B68] rounded-full shadow-sm hover:-translate-y-1 transition-transform items-center gap-2 font-bold text-xs" title="Simulateur de prix">
               <Calculator size={14} /> Simulateur
             </button>
-
-            {/* Barre de Recherche Globale */}
             <div className="relative w-full md:w-64">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Recherche globale..."
-                value={globalSearch}
-                onChange={(e) => setGlobalSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-white rounded-full text-xs font-bold shadow-sm outline-none text-[#8D7B68] border border-[#E8D5C4]/40 focus:border-[#8D7B68]"
-              />
+              <input type="text" placeholder="Recherche globale..." value={globalSearch} onChange={(e) => setGlobalSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 bg-white rounded-full text-xs font-bold shadow-sm outline-none text-[#8D7B68] border border-[#E8D5C4]/40 focus:border-[#8D7B68]" />
             </div>
-            
-            {/* Filtres par Date */}
             <div className="flex gap-1 bg-white/80 p-1.5 rounded-xl shadow-sm border border-[#E8D5C4]/20 w-full md:w-auto justify-center">
               <select value={filterYear} onChange={(e) => setFilterYear(parseInt(e.target.value))} className="text-[10px] md:text-xs font-bold outline-none bg-transparent text-[#8D7B68]">
                 <option value={2026}>2026</option>
@@ -1651,8 +1495,7 @@ const MainApp = ({ user }) => {
           <span className="text-[8px] font-bold">Arrivages</span>
         </button>
       </nav>
-
-      {/* --- MODALS --- */}
+{/* --- MODALS --- */}
       {showAddCustomer && (
         <CustomerModal editingCustomer={editingCustomer} handleSaveCustomer={handleSaveCustomer} onClose={() => { setShowAddCustomer(false); setEditingCustomer(null); }} />
       )}
@@ -1678,7 +1521,7 @@ const MainApp = ({ user }) => {
           calculateTotals={calculateTotals}
           shippingNational={shippingNational}
           setShippingNational={setShippingNational}
-          handleWalletTransaction={handleWalletTransaction} // MISE A JOUR PORTEFEUILLE
+          handleWalletTransaction={handleWalletTransaction} 
           onClose={() => { setShowAddOrder(false); setEditingOrder(null); }}
         />
       )}
@@ -1821,7 +1664,7 @@ const OrderModal = ({
   calculateTotals,
   shippingNational,
   setShippingNational,
-  handleWalletTransaction, // NOUVEAU
+  handleWalletTransaction, 
   onClose,
 }) => {
   const [defaultArrivage, setDefaultArrivage] = useState(editingOrder ? orderItems[0]?.arrivageId || "" : "");
@@ -1878,7 +1721,6 @@ const OrderModal = ({
 
   const isFullyPaidStatus = orderStatus === "Payée" || orderStatus === "Payée et livrée";
   
-  // S'il y a un trop-perçu (totalAdvance > totalVenteEtLivraison), on l'affiche
   const overpayment = totalAdvance - totalVenteEtLivraison;
   const resteToPay = isFullyPaidStatus ? 0 : Math.max(0, totalVenteEtLivraison - totalAdvance);
 
@@ -2035,7 +1877,7 @@ const OrderModal = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0">
               <div className="bg-white p-4 md:p-5 rounded-2xl md:rounded-[1.5rem] border border-[#E8D5C4]/40 flex flex-col h-full shadow-sm">
                 
-                {/* BLOC PORTEFEUILLE (Si cliente sélectionnée et a un solde) */}
+                {/* BLOC PORTEFEUILLE */}
                 {activeCustomer && (
                   <div className="mb-4 bg-green-50/50 p-3 rounded-xl border border-green-100 flex flex-col gap-2">
                     <div className="flex justify-between items-center">
@@ -2189,7 +2031,6 @@ const CustomerModal = ({ editingCustomer, handleSaveCustomer, onClose }) => {
               <input autoFocus name="name" defaultValue={editingCustomer?.name} required className="w-full p-3.5 rounded-xl bg-gray-50 text-sm font-bold text-[#4A3F35] outline-none border border-transparent focus:border-[#E8D5C4]" />
             </div>
 
-            {/* NOUVEAU : Champ pour modifier manuellement le Portefeuille */}
             <div className="space-y-1 bg-green-50/50 p-3 rounded-xl border border-green-100">
               <label className="text-[9px] uppercase font-bold text-green-600 ml-1 flex items-center gap-1"><Wallet size={10}/> Solde Portefeuille (DA)</label>
               <input name="wallet" type="number" defaultValue={editingCustomer?.wallet || 0} step="0.01" className="w-full p-3 rounded-lg bg-white text-sm font-black text-green-700 outline-none border border-green-200" />
@@ -2504,7 +2345,7 @@ const PriceCalculatorModal = ({ onClose, currencyRates, formatDA }) => {
 
 const DeliverySlipModal = ({ order, customers, onClose, formatDA }) => {
   const customer = customers.find((c) => c.id === order.customerId);
-  const [isPartial, setIsPartial] = useState(false); // NOUVEAU: Toggle de livraison partielle
+  const [isPartial, setIsPartial] = useState(false);
 
   const allItems = order.items || [];
   const displayedItems = isPartial ? allItems.filter(i => i.status === "Reçu") : allItems;
@@ -2517,15 +2358,12 @@ const DeliverySlipModal = ({ order, customers, onClose, formatDA }) => {
   const advance = parseFloat(order.advancePayment) || 0;
 
   const isFullyPaidStatus = order.status === "Payée" || order.status === "Payée et livrée";
-  
-  // Pour la livraison partielle, le reste à payer est calculé sur la base des articles imprimés
   const totalToPay = isFullyPaidStatus ? 0 : Math.max(0, subtotal + shipping - advance);
 
   return (
     <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1010] flex items-center justify-center p-4 print:absolute print:inset-0 print:bg-white print:p-0 print:z-[9999] print:block print:h-auto">
       <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl relative animate-in zoom-in-95 flex flex-col max-h-[90vh] overflow-hidden print:w-full print:max-w-full print:max-h-none print:shadow-none print:rounded-none print:animate-none print:transform-none print:border-none print:h-auto print:overflow-visible">
         
-        {/* EN TETE DU MODAL AVEC BOUTONS (Masqué à l'impression) */}
         <div className="absolute top-4 left-4 right-4 flex justify-between z-20 print:hidden">
           <div className="flex gap-2 bg-gray-50/90 p-1 rounded-full backdrop-blur-md shadow-sm border border-gray-200">
             <button onClick={() => setIsPartial(false)} className={`px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${!isPartial ? 'bg-[#8D7B68] text-white shadow-sm' : 'text-gray-400 hover:text-[#8D7B68]'}`}>
@@ -2682,6 +2520,84 @@ const ReceiptModal = ({ order, onClose, formatDA }) => {
           <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-[#E8D5C4]/30 print:border-black print:mt-4 print:pt-4">
             <p className="text-[8px] uppercase tracking-[0.2em] text-[#D4B996] font-bold print:text-black">Merci pour votre confiance ✨</p>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const DeleteModal = ({ deleteTarget, performDelete, onClose }) => (
+  <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1050] flex items-end md:items-center justify-center p-0 md:p-4 pb-4">
+    <div className="bg-white w-full md:max-w-xs rounded-[2rem] p-6 text-center shadow-2xl animate-in slide-in-from-bottom-4 md:zoom-in-95 pb-10 md:pb-6">
+      <div className="w-12 h-12 bg-red-50 text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
+        <AlertTriangle size={24} />
+      </div>
+      <h3 className="text-lg font-serif text-[#4A3F35] mb-1">Supprimer ?</h3>
+      <p className="text-[11px] text-[#B8A99A] mb-6">
+        Effacer définitivement{" "}
+        <span className="font-bold text-[#8D7B68]">{deleteTarget?.label}</span>{" "}
+        ? Irréversible.
+      </p>
+      <div className="flex gap-3">
+        <button onClick={onClose} className="flex-1 py-3 bg-[#FAF7F2] text-[#8D7B68] rounded-xl font-bold text-[10px] uppercase transition-colors shadow-sm">Annuler</button>
+        <button onClick={performDelete} className="flex-1 py-3 bg-red-400 text-white rounded-xl font-bold text-[10px] uppercase shadow-md">Supprimer</button>
+      </div>
+    </div>
+  </div>
+);
+
+const CustomerHistoryModal = ({ customer, orders, formatDA, onClose, onOpenOrder }) => {
+  const history = orders
+    .filter((o) => o.customerId === customer.id)
+    .sort((a, b) => {
+      const tA = a.date?.toMillis ? a.date.toMillis() : new Date(a.date || 0).getTime();
+      const tB = b.date?.toMillis ? b.date.toMillis() : new Date(b.date || 0).getTime();
+      return tB - tA;
+    });
+  return (
+    <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1000] flex items-end md:items-center justify-center p-0 md:p-4 pb-4">
+      <div className="bg-white w-full h-[85vh] md:h-auto md:max-h-[85vh] md:max-w-3xl rounded-t-[2rem] md:rounded-[2rem] shadow-2xl flex flex-col animate-in slide-in-from-bottom-4">
+        <div className="p-6 md:p-8 border-b border-gray-50 flex justify-between items-center shrink-0">
+          <div>
+            <h3 className="text-lg font-serif text-[#8D7B68] font-bold uppercase tracking-widest">Historique</h3>
+            <p className="text-xs text-[#4A3F35] font-bold mt-1">{customer.name} • {history.length} commande(s)</p>
+          </div>
+          <button onClick={onClose} className="p-2 bg-gray-50 rounded-full text-gray-400 hover:text-red-400"><X size={18} /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar space-y-3">
+          {history.length === 0 ? (
+            <p className="text-center text-sm text-gray-400 font-medium py-10">Aucune commande pour cette cliente.</p>
+          ) : (
+            history.map((o) => {
+              const d = o.date?.toDate ? o.date.toDate().toLocaleDateString("fr-FR") : new Date(o.date).toLocaleDateString("fr-FR");
+              const reste = calculateReste(o);
+              const total = (parseFloat(o.totalVente) || 0) + (parseFloat(o.shippingNational) || 0);
+              return (
+                <div key={o.id} className="bg-[#FAF7F2]/50 p-4 rounded-2xl border border-[#E8D5C4]/30 flex flex-col md:flex-row justify-between md:items-center gap-3 hover:bg-[#FAF7F2] transition-colors">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-bold text-[#8D7B68]">{o.orderNumber}</span>
+                      <span className="text-[10px] bg-white px-2 py-1 rounded-lg border border-gray-100 text-gray-500 font-bold uppercase">{o.status}</span>
+                    </div>
+                    <p className="text-[10px] text-[#B8A99A] font-bold uppercase">{d}</p>
+                  </div>
+                  <div className="flex items-center gap-4 text-right justify-between w-full md:w-auto">
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <p className="text-[9px] uppercase text-gray-400 font-bold mb-0.5">Total</p>
+                        <p className="font-black text-[#8D7B68] text-sm">{formatDA(total)}</p>
+                      </div>
+                      <div className="pl-4 border-l border-[#E8D5C4]/40">
+                        <p className="text-[9px] uppercase text-gray-400 font-bold mb-0.5">Reste</p>
+                        <p className={`font-black text-sm ${reste > 0 ? "text-red-400" : "text-green-500"}`}>{reste > 0 ? formatDA(reste) : "Payé"}</p>
+                      </div>
+                    </div>
+                    <button onClick={() => onOpenOrder(o)} className="p-2.5 bg-white rounded-xl text-[#D4B996] shadow-sm hover:scale-105 transition-transform ml-2"><Edit3 size={16} /></button>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
     </div>

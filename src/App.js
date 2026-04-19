@@ -687,20 +687,43 @@ const MainApp = ({ user }) => {
     const rateEur = getRateForDate(orderDate || new Date());
     let venteTotal = 0,
       costOfGoods = 0;
-    const processed =
-      items?.map((it) => {
+      
+    const processed = items?.map((it) => {
         const stats = getArrivageStats(it.arrivageId);
-        const itAchatDA = (parseFloat(it.priceAchatEuro) || 0) * rateEur;
+        let itAchatDA = (parseFloat(it.priceAchatEuro) || 0) * rateEur;
         const itLogInt = ((parseFloat(it.weightG) || 0) / 1000) * stats.rate;
-        venteTotal += parseFloat(it.priceVente) || 0;
+        let itVente = parseFloat(it.priceVente) || 0;
+
+        // --- NOUVELLE LOGIQUE POUR LES RETOURS ---
+        if (it.status === "Retourné Fournisseur") {
+          // 1. Si Shein a remboursé, l'article ne te coûte plus rien
+          if (it.sheinRembourse) {
+            itAchatDA = 0;
+          }
+
+          // 2. Facturation à la cliente
+          if (it.responsableRetour === "cliente") {
+            // Si c'est la faute de la cliente, elle ne paie pas l'article, 
+            // MAIS elle te doit les frais de retour !
+            const fraisAChargeCliente = (parseFloat(it.fraisRetourLivreur) || 0) + (parseFloat(it.fraisRetourFournisseur) || 0);
+            itVente = fraisAChargeCliente; 
+          } else {
+            // Si c'est une erreur boutique/Shein, la cliente ne paie rien du tout
+            itVente = 0;
+          }
+        }
+
+        venteTotal += itVente;
         costOfGoods += itAchatDA + itLogInt;
+        
         return {
           ...it,
           itAchatDA,
           itLogInt,
-          itBenefit: (parseFloat(it.priceVente) || 0) - (itAchatDA + itLogInt),
+          itBenefit: itVente - (itAchatDA + itLogInt),
         };
       }) || [];
+      
     return { venteTotal, benefit: venteTotal - costOfGoods, processed };
   };
 

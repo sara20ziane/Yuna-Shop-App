@@ -4436,7 +4436,6 @@ const ReceiptModal = ({ order, onClose, formatDA }) => {
               <span>{formatDA(subtotal)}</span>
             </div>
             
-            {/* 👇 LIGNE DE LA REMISE (S'affiche que si tu as mis une remise) 👇 */}
             {discount > 0 && (
               <div className="flex justify-between text-green-600/80 font-bold print:text-black">
                 <span>Remise commerciale</span>
@@ -4454,13 +4453,13 @@ const ReceiptModal = ({ order, onClose, formatDA }) => {
               <span>- {formatDA(advance)}</span>
             </div>
             
-            {/* 👇 LIGNE DU REMBOURSEMENT (S'affiche que si tu as remboursé) 👇 */}
+            {/* 👇 LA CORRECTION EST ICI : IL MANQUAIT LE ')}' A LA FIN 👇 */}
             {refund > 0 && (
               <div className="flex justify-between text-red-400 font-bold print:text-black">
                 <span>Remboursement</span>
                 <span>+ {formatDA(refund)}</span>
               </div>
-            
+            )}
             
             <div className="h-px bg-[#E8D5C4] my-2 md:my-3 opacity-50 print:bg-black print:opacity-100 print:my-2"></div>
             
@@ -4480,7 +4479,6 @@ const ReceiptModal = ({ order, onClose, formatDA }) => {
     </div>
   );
 };
-
 const DeleteModal = ({ deleteTarget, performDelete, onClose }) => (
   <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1050] flex items-end md:items-center justify-center p-0 md:p-4 pb-4">
     <div className="bg-white w-full md:max-w-xs rounded-[2rem] p-6 text-center shadow-2xl animate-in slide-in-from-bottom-4 md:zoom-in-95 pb-10 md:pb-6">

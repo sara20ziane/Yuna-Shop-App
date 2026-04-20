@@ -952,10 +952,12 @@ const MainApp = ({ user }) => {
         benefit: t.benefit,
         status: orderStatus,
         date: Timestamp.fromDate(selectedDate),
+        discount: parseFloat(orderDiscount) || 0,
+        refundAmount: parseFloat(orderRefundAmount) || 0,
       };
 
       // --- NOUVEAUTÉ : Gestion du Portefeuille ---
-      const totalVenteEtLivraison = t.venteTotal + (parseFloat(shippingNational) || 0);
+      const totalVenteEtLivraison = t.venteTotal + (parseFloat(shippingNational) || 0) - (parseFloat(orderDiscount) || 0);
       if (totalAdvance > totalVenteEtLivraison && customerId) {
         const excedent = totalAdvance - totalVenteEtLivraison;
         const customerRef = doc(db, "artifacts", appId, "public", "data", "customers", customerId);
@@ -1760,6 +1762,8 @@ const MainApp = ({ user }) => {
                               setEditingOrder(o);
                               setOrderItems(o.items || []);
                               setShippingNational(o.shippingNational || 0);
+                              setOrderDiscount(o.discount || 0);
+                              setOrderRefundAmount(o.refundAmount || 0);
                               const existingDate = o.date?.toDate
                                 ? o.date.toDate().toISOString().split("T")[0]
                                 : new Date(o.date || Date.now())
@@ -1925,6 +1929,8 @@ const MainApp = ({ user }) => {
                             setEditingOrder(o);
                             setOrderItems(o.items || []);
                             setShippingNational(o.shippingNational || 0);
+                            setOrderDiscount(o.discount || 0);
+                            setOrderRefundAmount(o.refundAmount || 0);
                             const existingDate = o.date?.toDate
                               ? o.date.toDate().toISOString().split("T")[0]
                               : new Date(o.date || Date.now())
@@ -2615,6 +2621,10 @@ const MainApp = ({ user }) => {
           calculateTotals={calculateTotals}
           shippingNational={shippingNational}
           setShippingNational={setShippingNational}
+          orderDiscount={orderDiscount}
+          setOrderDiscount={setOrderDiscount}
+          orderRefundAmount={orderRefundAmount}
+          setOrderRefundAmount={setOrderRefundAmount}
           onClose={() => {
             setShowAddOrder(false);
             setEditingOrder(null);
@@ -2669,6 +2679,8 @@ const MainApp = ({ user }) => {
             setEditingOrder(o);
             setOrderItems(o.items || []);
             setShippingNational(o.shippingNational || 0);
+            setOrderDiscount(o.discount || 0);
+            setOrderRefundAmount(o.refundAmount || 0);
             const existingDate = o.date?.toDate
               ? o.date.toDate().toISOString().split("T")[0]
               : new Date(o.date || Date.now()).toISOString().split("T")[0];
@@ -2899,6 +2911,10 @@ const OrderModal = ({
   shippingNational,
   setShippingNational,
   onClose,
+  orderDiscount,
+  setOrderDiscount,
+  orderRefundAmount,
+  setOrderRefundAmount,
 }) => {
   const [defaultArrivage, setDefaultArrivage] = useState(
     editingOrder ? orderItems[0]?.arrivageId || "" : ""
@@ -2967,23 +2983,28 @@ const OrderModal = ({
     0
   );
   const totalVenteEtLivraison =
-    calculateTotals(orderItems, 0, new Date()).venteTotal +
-    (parseFloat(shippingNational) || 0);
+  calculateTotals(orderItems, 0, new Date()).venteTotal +
+  (parseFloat(shippingNational) || 0) - (parseFloat(orderDiscount) || 0);
 
-  const montantEnAlgerie = orderItems
-    .filter(
-      (item) =>
-        item.status === "Reçu" ||
-        item.status === "Livré" ||
-        parseFloat(item.weightG) > 0
-    )
-    .reduce((sum, i) => sum + (parseFloat(i.priceVente) || 0), 0);
+const montantEnAlgerie = orderItems
+  .filter(
+    (item) =>
+      item.status === "Reçu" ||
+      item.status === "Livré" ||
+      parseFloat(item.weightG) > 0
+  )
+  .reduce((sum, i) => sum + (parseFloat(i.priceVente) || 0), 0);
 
-  const isFullyPaidStatus =
-    orderStatus === "Payée" || orderStatus === "Payée et livrée";
-  const resteToPay = isFullyPaidStatus
-    ? 0
-    : Math.max(0, totalVenteEtLivraison - totalAdvance);
+// 👇 1. ON CALCULE LA VRAIE AVANCE (Avance - Remboursement) 👇
+const netAdvance = totalAdvance - (parseFloat(orderRefundAmount) || 0);
+
+const isFullyPaidStatus =
+  orderStatus === "Payée" || orderStatus === "Payée et livrée";
+
+// 👇 2. ON UTILISE 'netAdvance' AU LIEU DE 'totalAdvance' 👇
+const resteToPay = isFullyPaidStatus
+  ? 0
+  : Math.max(0, totalVenteEtLivraison - netAdvance);
 
   return (
     <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1000] flex items-end md:items-center justify-center p-0 md:p-4 overflow-hidden pt-10">
@@ -3437,7 +3458,41 @@ const OrderModal = ({
                     ))}
                   </div>
                 </div>
+                <div className="mt-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] text-[#B8A99A] font-bold uppercase tracking-widest">
+                      Remise Commerciale
+                    </span>
+                    <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-[#E8D5C4]/50 shadow-sm">
+                      <span className="text-xs font-bold text-green-500">-</span>
+                      <input
+                        type="number"
+                        value={orderDiscount}
+                        onChange={(e) => setOrderDiscount(e.target.value)}
+                        className="w-16 outline-none text-right font-bold text-sm text-green-500"
+                        placeholder="0.00"
+                      />
+                      <span className="text-[9px] font-bold text-[#D4B996]">DA</span>
+                    </div>
+                  </div>
 
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] text-[#B8A99A] font-bold uppercase tracking-widest">
+                      Remboursé à la cliente
+                    </span>
+                    <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-red-100 shadow-sm">
+                      <span className="text-xs font-bold text-red-400">+</span>
+                      <input
+                        type="number"
+                        value={orderRefundAmount}
+                        onChange={(e) => setOrderRefundAmount(e.target.value)}
+                        className="w-16 outline-none text-right font-bold text-sm text-red-400"
+                        placeholder="0.00"
+                      />
+                      <span className="text-[9px] font-bold text-[#D4B996]">DA</span>
+                    </div>
+                  </div>
+                </div>
                 <div className="space-y-2 mt-4">
                   <div className="flex justify-between text-[11px] font-bold text-blue-600/80 bg-blue-50/50 p-2 rounded-lg border border-blue-100 mb-2">
                     <span>Montant des articles en Algérie :</span>
@@ -4299,12 +4354,18 @@ const ReceiptModal = ({ order, onClose, formatDA }) => {
   );
   const shipping = parseFloat(order.shippingNational) || 0;
   const advance = parseFloat(order.advancePayment) || 0;
+  
+  // 👇 1. ON AJOUTE LES VARIABLES ICI 👇
+  const discount = parseFloat(order.discount) || 0;
+  const refund = parseFloat(order.refundAmount) || 0;
 
   const isFullyPaidStatus =
     order.status === "Payée" || order.status === "Payée et livrée";
+    
+  // 👇 2. ON MODIFIE LE CALCUL DU TOTAL 👇
   const total = isFullyPaidStatus
     ? 0
-    : Math.max(0, subtotal + shipping - advance);
+    : Math.max(0, subtotal + shipping - discount - advance + refund);
 
   return (
     <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1010] flex items-center justify-center p-4 print:absolute print:inset-0 print:bg-white print:p-0 print:z-[9999] print:block print:h-auto">
@@ -4378,14 +4439,32 @@ const ReceiptModal = ({ order, onClose, formatDA }) => {
               <span>Sous-total</span>
               <span>{formatDA(subtotal)}</span>
             </div>
+            
+            {/* 👇 LIGNE DE LA REMISE (S'affiche que si tu as mis une remise) 👇 */}
+            {discount > 0 && (
+              <div className="flex justify-between text-green-600/80 font-bold print:text-black">
+                <span>Remise commerciale</span>
+                <span>- {formatDA(discount)}</span>
+              </div>
+            )}
+
             <div className="flex justify-between text-[#8D7B68]/70 font-bold print:text-black print:font-medium">
               <span>Livraison</span>
               <span>{formatDA(shipping)}</span>
             </div>
-            <div className="flex justify-between text-green-600/80 font-bold print:text-black">
-              <span>Avance</span>
+            
+            <div className="flex justify-between text-[#8D7B68]/70 font-bold print:text-black">
+              <span>Avance perçue</span>
               <span>- {formatDA(advance)}</span>
             </div>
+            
+            {/* 👇 LIGNE DU REMBOURSEMENT (S'affiche que si tu as remboursé) 👇 */}
+            {refund > 0 && (
+              <div className="flex justify-between text-red-400 font-bold print:text-black">
+                <span>Remboursement</span>
+                <span>+ {formatDA(refund)}</span>
+              </div>
+            
             
             <div className="h-px bg-[#E8D5C4] my-2 md:my-3 opacity-50 print:bg-black print:opacity-100 print:my-2"></div>
             

@@ -2128,18 +2128,22 @@ const MainApp = ({ user }) => {
                     })
                     .map((c) => (
                       <tr key={c.id} className="group hover:bg-[#FAF7F2]/50">
-                        <td className="p-5">
-                          <div className="flex items-center gap-3">
-                            <PlatformIcon type={c.platform} size={16} />
-                            <span className="font-bold text-[#8D7B68] text-sm">
-                              {c.name}
-                            </span>
-                          </div>
-                        </td>
                         <td className="p-5 space-y-1">
                           <div className="flex items-center gap-2 text-[#4A3F35] font-medium">
-                            <Phone size={12} className="text-[#D4B996]" />{" "}
-                            {c.phone}
+                            {c.deliveryMode === "domicile" ? (
+                              <>
+                                <Home size={12} className="text-[#D4B996]" />{" "}
+                                Domicile
+                              </>
+                            ) : (
+                              <>
+                                <Store size={12} className="text-[#D4B996]" />{" "}
+                                {c.stopdeskName || "Stopdesk"}
+                              </>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-gray-500 pl-5">
+                            {c.wilaya} - {c.commune}
                           </div>
                         </td>
                             <td className="p-5">
@@ -3745,6 +3749,21 @@ const CustomerModal = ({ editingCustomer, handleSaveCustomer, onClose }) => {
                 </div>
               )}
             </div>
+
+            {/* 👇 LA CASE PORTEFEUILLE CORRIGÉE (SORTIE DU IF STOPDESK) 👇 */}
+            <div className="space-y-1 mt-4 p-3 bg-green-50/30 rounded-xl border border-green-100">
+              <label className="text-[9px] uppercase font-bold text-green-600 ml-1">
+                Correction Portefeuille (DA)
+              </label>
+              <input
+                name="walletDA"
+                type="number"
+                defaultValue={editingCustomer?.walletDA || 0}
+                placeholder="Ex: 0 pour vider"
+                className="w-full p-3.5 rounded-xl bg-white text-sm font-bold text-green-600 outline-none border border-transparent focus:border-green-200 shadow-sm"
+              />
+            </div>
+
           </div>
           <div className="shrink-0 pt-4">
             <button

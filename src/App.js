@@ -940,11 +940,35 @@ const MainApp = ({ user }) => {
         0
       );
 
+      // 👇 1. ON VERROUILLE LES FRAIS DE RETOUR ICI 👇
+      let finalItems = [...t.processed];
+      for (let i = 0; i < finalItems.length; i++) {
+        let item = finalItems[i];
+        if (item.status === "Retourné Fournisseur" && !item.fraisRetourComptabilises) {
+          if (parseFloat(item.fraisRetourLivreur) > 0) {
+            await addDoc(collection(db, "artifacts", appId, "public", "data", "expenses"), {
+              label: `Retour Livreur - CMD ${formData.get("orderNumber")}`,
+              amountDA: parseFloat(item.fraisRetourLivreur),
+              date: new Date().toISOString().split('T')[0]
+            });
+          }
+          if (parseFloat(item.fraisRetourFournisseur) > 0) {
+            await addDoc(collection(db, "artifacts", appId, "public", "data", "expenses"), {
+              label: `Retour Frs - CMD ${formData.get("orderNumber")}`,
+              amountDA: parseFloat(item.fraisRetourFournisseur),
+              date: new Date().toISOString().split('T')[0]
+            });
+          }
+          // Le verrou : on marque cet article pour que le système sache que c'est déjà compté !
+          finalItems[i].fraisRetourComptabilises = true;
+        }
+      }
+
       const data = {
         orderNumber: formData.get("orderNumber"),
         customerId: customerId,
         customerName: customer?.name || "Inconnue",
-        items: t.processed,
+        items: finalItems, // On utilise nos items sécurisés
         payments: orderPayments,
         shippingNational: parseFloat(shippingNational) || 0,
         advancePayment: totalAdvance,
@@ -956,13 +980,14 @@ const MainApp = ({ user }) => {
         refundAmount: parseFloat(orderRefundAmount) || 0,
       };
 
-      // --- NOUVEAUTÉ : Gestion du Portefeuille ---
+      // Gestion du Portefeuille (reste identique)
       const totalVenteEtLivraison = t.venteTotal + (parseFloat(shippingNational) || 0) - (parseFloat(orderDiscount) || 0);
       if (totalAdvance > totalVenteEtLivraison && customerId) {
         const excedent = totalAdvance - totalVenteEtLivraison;
         const customerRef = doc(db, "artifacts", appId, "public", "data", "customers", customerId);
         await updateDoc(customerRef, { walletDA: (customer?.walletDA || 0) + excedent });
         showToast(`Excédent de ${excedent} DA ajouté au portefeuille cliente`);
+      }
       }
 
       // --- NOUVEAUTÉ : Dépenses de retour automatiques ---
@@ -2118,11 +2143,16 @@ const MainApp = ({ user }) => {
                     </div>
                     <div className="flex justify-between items-center text-[10px] pt-2 border-t border-gray-50 text-gray-500">
                       <span>{c.wilaya}</span>
-                      <span className="font-bold text-[#8D7B68]">
-                        {c.deliveryMode === "domicile"
-                          ? "Domicile"
-                          : "Stopdesk"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {c.walletDA > 0 && (
+                          <span className="text-green-600 font-black px-2 py-0.5 bg-green-50 rounded-md border border-green-100">
+                            💰 {formatDA(c.walletDA)}
+                          </span>
+                        )}
+                        <span className="font-bold text-[#8D7B68]">
+                          {c.deliveryMode === "domicile" ? "Domicile" : "Stopdesk"}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -2134,6 +2164,7 @@ const MainApp = ({ user }) => {
                     <th className="p-5">Cliente</th>
                     <th className="p-5">Contact</th>
                     <th className="p-5">Livraison</th>
+                    <th className="p-5">Portefeuille</th>
                     <th className="p-5 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -2170,6 +2201,15 @@ const MainApp = ({ user }) => {
                             <Phone size={12} className="text-[#D4B996]" />{" "}
                             {c.phone}
                           </div>
+                        </td>
+                            <td className="p-5">
+                          {c.walletDA > 0 ? (
+                            <span className="px-3 py-1 bg-green-50 text-green-600 border border-green-200 rounded-lg text-[10px] font-black">
+                              {formatDA(c.walletDA)}
+                            </span>
+                          ) : (
+                            <span className="text-gray-300 text-[10px] font-bold">0 DA</span>
+                          )}
                         </td>
                         <td className="p-5 space-y-1">
                           <div className="flex items-center gap-2 text-[#4A3F35] font-medium">
@@ -3079,6 +3119,7 @@ const OrderModal = ({
                         >
                           {c.name} •{" "}
                           {c.deliveryMode === "stopdesk" ? "Stopdesk" : "Dom"}
+                          {c.walletDA > 0 ? ` 💰 (Crédit: ${c.walletDA} DA)` : ""}
                         </option>
                       ))}
                     </optgroup>

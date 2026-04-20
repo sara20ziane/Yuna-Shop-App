@@ -671,12 +671,16 @@ const MainApp = ({ user }) => {
 
       // 4. AJOUT D'EXCÉDENT AU PORTEFEUILLE (Si la cliente paie trop en cash)
       const totalVenteEtLivraison = t.venteTotal + (parseFloat(shippingNational) || 0) - (parseFloat(orderDiscount) || 0);
-      // On ne compte pas l'utilisation du portefeuille comme un excédent
+      
+      // NOUVEAU : On calcule l'argent RÉELLEMENT encaissé en déduisant ce que tu as remboursé
+      const totalRemboursement = parseFloat(orderRefundAmount) || 0;
       const cashPayments = orderPayments.filter(p => p.method !== "Portefeuille").reduce((sum, p) => sum + parseFloat(p.amount), 0);
+      const netCashPayments = cashPayments - totalRemboursement; 
+      
       const resteAvantCash = totalVenteEtLivraison - newWalletUsed;
 
-      if (cashPayments > resteAvantCash && customerId) {
-        const excedent = cashPayments - resteAvantCash;
+      if (netCashPayments > resteAvantCash && customerId) {
+        const excedent = netCashPayments - resteAvantCash;
         const customerRef = doc(db, "artifacts", appId, "public", "data", "customers", customerId);
         // On récupère le solde mis à jour après la déduction éventuelle
         const updatedWallet = (customer?.walletDA || 0) - walletDiff;

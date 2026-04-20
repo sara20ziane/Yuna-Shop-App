@@ -935,12 +935,13 @@ const MainApp = ({ user }) => {
       const customer = customers.find((c) => c.id === customerId);
       const selectedDate = new Date(formData.get("orderDate") || new Date());
       const t = calculateTotals(orderItems, shippingNational, selectedDate);
+      
       const totalAdvance = orderPayments.reduce(
         (sum, p) => sum + parseFloat(p.amount || 0),
         0
       );
 
-      // 👇 1. ON VERROUILLE LES FRAIS DE RETOUR ICI 👇
+      // --- CORRECTION : VERROUILLAGE DES FRAIS DE RETOUR ---
       let finalItems = [...t.processed];
       for (let i = 0; i < finalItems.length; i++) {
         let item = finalItems[i];
@@ -968,7 +969,7 @@ const MainApp = ({ user }) => {
         orderNumber: formData.get("orderNumber"),
         customerId: customerId,
         customerName: customer?.name || "Inconnue",
-        items: finalItems, // On utilise nos items sécurisés
+        items: finalItems, // On utilise nos items sécurisés ici
         payments: orderPayments,
         shippingNational: parseFloat(shippingNational) || 0,
         advancePayment: totalAdvance,
@@ -980,33 +981,13 @@ const MainApp = ({ user }) => {
         refundAmount: parseFloat(orderRefundAmount) || 0,
       };
 
-      // Gestion du Portefeuille (reste identique)
+      // --- GESTION DU PORTEFEUILLE CLIENTE ---
       const totalVenteEtLivraison = t.venteTotal + (parseFloat(shippingNational) || 0) - (parseFloat(orderDiscount) || 0);
       if (totalAdvance > totalVenteEtLivraison && customerId) {
         const excedent = totalAdvance - totalVenteEtLivraison;
         const customerRef = doc(db, "artifacts", appId, "public", "data", "customers", customerId);
         await updateDoc(customerRef, { walletDA: (customer?.walletDA || 0) + excedent });
         showToast(`Excédent de ${excedent} DA ajouté au portefeuille cliente`);
-      }
-      }
-
-      // --- NOUVEAUTÉ : Dépenses de retour automatiques ---
-      const itemsRetournes = orderItems.filter(it => it.status === "Retourné Fournisseur");
-      for (const item of itemsRetournes) {
-        if (parseFloat(item.fraisRetourLivreur) > 0) {
-          await addDoc(collection(db, "artifacts", appId, "public", "data", "expenses"), {
-            label: `Retour Livreur - CMD ${formData.get("orderNumber")}`,
-            amountDA: parseFloat(item.fraisRetourLivreur),
-            date: new Date().toISOString().split('T')[0]
-          });
-        }
-        if (parseFloat(item.fraisRetourFournisseur) > 0) {
-          await addDoc(collection(db, "artifacts", appId, "public", "data", "expenses"), {
-            label: `Retour Frs - CMD ${formData.get("orderNumber")}`,
-            amountDA: parseFloat(item.fraisRetourFournisseur),
-            date: new Date().toISOString().split('T')[0]
-          });
-        }
       }
 
       if (editingOrder) {
@@ -1030,46 +1011,6 @@ const MainApp = ({ user }) => {
       setIsSaving(false);
     }
   };
-
-  const handleSaveCustomer = async (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const data = {
-      name: formData.get("name"),
-      phone: formData.get("phone"),
-      phone2: formData.get("phone2") || "",
-      wilaya: formData.get("wilaya"),
-      commune: formData.get("commune"),
-      deliveryMode: formData.get("deliveryMode"),
-      stopdeskName: formData.get("stopdeskName") || "",
-      platform: formData.get("platform"),
-      createdAt: editingCustomer ? editingCustomer.createdAt : Timestamp.now(),
-    };
-    if (editingCustomer) {
-      await updateDoc(
-        doc(
-          db,
-          "artifacts",
-          appId,
-          "public",
-          "data",
-          "customers",
-          editingCustomer.id
-        ),
-        data
-      );
-      showToast("Cliente modifiée");
-    } else {
-      await addDoc(
-        collection(db, "artifacts", appId, "public", "data", "customers"),
-        data
-      );
-      showToast("Nouvelle cliente ajoutée");
-    }
-    setShowAddCustomer(false);
-    setEditingCustomer(null);
-  };
-
   const handleSaveArrivage = async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);

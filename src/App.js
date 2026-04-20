@@ -2982,29 +2982,27 @@ const OrderModal = ({
     (sum, p) => sum + parseFloat(p.amount || 0),
     0
   );
+
+  const netAdvance = totalAdvance - (parseFloat(orderRefundAmount) || 0);
+
   const totalVenteEtLivraison =
-  calculateTotals(orderItems, 0, new Date()).venteTotal +
-  (parseFloat(shippingNational) || 0) - (parseFloat(orderDiscount) || 0);
+    calculateTotals(orderItems, 0, new Date()).venteTotal +
+    (parseFloat(shippingNational) || 0) - (parseFloat(orderDiscount) || 0);
 
-const montantEnAlgerie = orderItems
-  .filter(
-    (item) =>
-      item.status === "Reçu" ||
-      item.status === "Livré" ||
-      parseFloat(item.weightG) > 0
-  )
-  .reduce((sum, i) => sum + (parseFloat(i.priceVente) || 0), 0);
+  const montantEnAlgerie = orderItems
+    .filter(
+      (item) =>
+        item.status === "Reçu" ||
+        item.status === "Livré" ||
+        parseFloat(item.weightG) > 0
+    )
+    .reduce((sum, i) => sum + (parseFloat(i.priceVente) || 0), 0);
 
-// 👇 1. ON CALCULE LA VRAIE AVANCE (Avance - Remboursement) 👇
-const netAdvance = totalAdvance - (parseFloat(orderRefundAmount) || 0);
-
-const isFullyPaidStatus =
-  orderStatus === "Payée" || orderStatus === "Payée et livrée";
-
-// 👇 2. ON UTILISE 'netAdvance' AU LIEU DE 'totalAdvance' 👇
-const resteToPay = isFullyPaidStatus
-  ? 0
-  : Math.max(0, totalVenteEtLivraison - netAdvance);
+  const isFullyPaidStatus =
+    orderStatus === "Payée" || orderStatus === "Payée et livrée";
+  const resteToPay = isFullyPaidStatus
+    ? 0
+    : Math.max(0, totalVenteEtLivraison - netAdvance);
 
   return (
     <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1000] flex items-end md:items-center justify-center p-0 md:p-4 overflow-hidden pt-10">
@@ -3261,11 +3259,8 @@ const resteToPay = isFullyPaidStatus
                       </div>
                     </div>
 
-                    {/* POINT C : LES FRAIS DE RETOUR SONT INTÉGRÉS ICI */}
                     {item.status === "Retourné Fournisseur" && (
                       <div className="flex flex-col gap-3 mt-3 p-3 md:p-4 bg-red-50/50 rounded-xl border border-red-100 animate-in fade-in">
-                        
-                        {/* 1. QUI EST RESPONSABLE ET REMBOURSEMENT SHEIN */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-3 border-b border-red-100">
                           <div className="space-y-1">
                             <label className="text-[9px] font-bold text-red-500 uppercase tracking-widest ml-1">Responsable du retour</label>
@@ -3293,7 +3288,6 @@ const resteToPay = isFullyPaidStatus
                           </div>
                         </div>
 
-                        {/* 2. LES FRAIS DE RETOUR */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="space-y-1">
                             <label className="text-[9px] font-bold text-red-400 uppercase tracking-widest ml-1">Frais Retour Livreur (DA)</label>
@@ -3457,42 +3451,44 @@ const resteToPay = isFullyPaidStatus
                       </button>
                     ))}
                   </div>
-                </div>
-                <div className="mt-4 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] text-[#B8A99A] font-bold uppercase tracking-widest">
-                      Remise Commerciale
-                    </span>
-                    <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-[#E8D5C4]/50 shadow-sm">
-                      <span className="text-xs font-bold text-green-500">-</span>
-                      <input
-                        type="number"
-                        value={orderDiscount}
-                        onChange={(e) => setOrderDiscount(e.target.value)}
-                        className="w-16 outline-none text-right font-bold text-sm text-green-500"
-                        placeholder="0.00"
-                      />
-                      <span className="text-[9px] font-bold text-[#D4B996]">DA</span>
-                    </div>
-                  </div>
 
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] text-[#B8A99A] font-bold uppercase tracking-widest">
-                      Remboursé à la cliente
-                    </span>
-                    <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-red-100 shadow-sm">
-                      <span className="text-xs font-bold text-red-400">+</span>
-                      <input
-                        type="number"
-                        value={orderRefundAmount}
-                        onChange={(e) => setOrderRefundAmount(e.target.value)}
-                        className="w-16 outline-none text-right font-bold text-sm text-red-400"
-                        placeholder="0.00"
-                      />
-                      <span className="text-[9px] font-bold text-[#D4B996]">DA</span>
+                  <div className="mt-4 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-[#B8A99A] font-bold uppercase tracking-widest">
+                        Remise Commerciale
+                      </span>
+                      <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-[#E8D5C4]/50 shadow-sm">
+                        <span className="text-xs font-bold text-green-500">-</span>
+                        <input
+                          type="number"
+                          value={orderDiscount}
+                          onChange={(e) => setOrderDiscount(e.target.value)}
+                          className="w-16 outline-none text-right font-bold text-sm text-green-500"
+                          placeholder="0.00"
+                        />
+                        <span className="text-[9px] font-bold text-[#D4B996]">DA</span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-[#B8A99A] font-bold uppercase tracking-widest">
+                        Remboursé à la cliente
+                      </span>
+                      <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-red-100 shadow-sm">
+                        <span className="text-xs font-bold text-red-400">+</span>
+                        <input
+                          type="number"
+                          value={orderRefundAmount}
+                          onChange={(e) => setOrderRefundAmount(e.target.value)}
+                          className="w-16 outline-none text-right font-bold text-sm text-red-400"
+                          placeholder="0.00"
+                        />
+                        <span className="text-[9px] font-bold text-[#D4B996]">DA</span>
+                      </div>
                     </div>
                   </div>
                 </div>
+
                 <div className="space-y-2 mt-4">
                   <div className="flex justify-between text-[11px] font-bold text-blue-600/80 bg-blue-50/50 p-2 rounded-lg border border-blue-100 mb-2">
                     <span>Montant des articles en Algérie :</span>

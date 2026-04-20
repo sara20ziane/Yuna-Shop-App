@@ -618,6 +618,7 @@ const MainApp = ({ user }) => {
       const t = calculateTotals(orderItems, shippingNational, selectedDate);
       const totalAdvance = orderPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
 
+      // 1. GESTION DU RETOUR FOURNISSEUR
       let finalItems = [...t.processed];
       for (let i = 0; i < finalItems.length; i++) {
         let item = finalItems[i];
@@ -640,6 +641,18 @@ const MainApp = ({ user }) => {
         }
       }
 
+      // 2. CALCUL AUTOMATIQUE DU PORTEFEUILLE (Déduction ou Remboursement)
+      const oldWalletUsed = editingOrder?.payments?.filter(p => p.method === "Portefeuille").reduce((sum, p) => sum + parseFloat(p.amount), 0) || 0;
+      const newWalletUsed = orderPayments.filter(p => p.method === "Portefeuille").reduce((sum, p) => sum + parseFloat(p.amount), 0) || 0;
+      const walletDiff = newWalletUsed - oldWalletUsed;
+
+      if (walletDiff !== 0 && customerId) {
+        const customerRef = doc(db, "artifacts", appId, "public", "data", "customers", customerId);
+        const currentWallet = customer?.walletDA || 0;
+        await updateDoc(customerRef, { walletDA: currentWallet - walletDiff });
+      }
+
+      // 3. PRÉPARATION DES DONNÉES DE LA COMMANDE
       const data = {
         orderNumber: formData.get("orderNumber"),
         customerId,
@@ -647,7 +660,7 @@ const MainApp = ({ user }) => {
         items: finalItems,
         payments: orderPayments,
         shippingNational: parseFloat(shippingNational) || 0,
-        advancePayment: totalAdvance,
+        advancePayment: totalAdvance, // Le paiement portefeuille est inclus dedans
         totalVente: t.venteTotal,
         benefit: t.benefit,
         status: orderStatus,
@@ -656,14 +669,22 @@ const MainApp = ({ user }) => {
         refundAmount: parseFloat(orderRefundAmount) || 0,
       };
 
+      // 4. AJOUT D'EXCÉDENT AU PORTEFEUILLE (Si la cliente paie trop en cash)
       const totalVenteEtLivraison = t.venteTotal + (parseFloat(shippingNational) || 0) - (parseFloat(orderDiscount) || 0);
-      if (totalAdvance > totalVenteEtLivraison && customerId) {
-        const excedent = totalAdvance - totalVenteEtLivraison;
+      // On ne compte pas l'utilisation du portefeuille comme un excédent
+      const cashPayments = orderPayments.filter(p => p.method !== "Portefeuille").reduce((sum, p) => sum + parseFloat(p.amount), 0);
+      const resteAvantCash = totalVenteEtLivraison - newWalletUsed;
+
+      if (cashPayments > resteAvantCash && customerId) {
+        const excedent = cashPayments - resteAvantCash;
         const customerRef = doc(db, "artifacts", appId, "public", "data", "customers", customerId);
-        await updateDoc(customerRef, { walletDA: (customer?.walletDA || 0) + excedent });
+        // On récupère le solde mis à jour après la déduction éventuelle
+        const updatedWallet = (customer?.walletDA || 0) - walletDiff;
+        await updateDoc(customerRef, { walletDA: updatedWallet + excedent });
         showToast(`Excédent de ${excedent} DA ajouté au portefeuille cliente`);
       }
 
+      // 5. SAUVEGARDE EN BASE DE DONNÉES
       if (editingOrder) {
         await updateDoc(doc(db, "artifacts", appId, "public", "data", "orders", editingOrder.id), data);
         showToast("Commande modifiée avec succès");
@@ -1474,6 +1495,7 @@ const OrderModal = ({
   const [newPaymentAmount, setNewPaymentAmount] = useState("");
   const [newPaymentDate, setNewPaymentDate] = useState(new Date().toISOString().split("T")[0]);
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedCustomerId, setSelectedCustomerId] = useState(editingOrder?.customerId || "");
 
   useEffect(() => {
     let hasChanges = false;
@@ -1506,13 +1528,33 @@ const OrderModal = ({
   const isFullyPaidStatus = orderStatus === "Payée" || orderStatus === "Payée et livrée";
   const resteToPay = isFullyPaidStatus ? 0 : Math.max(0, totalVenteEtLivraison - netAdvance);
 
+  // LOGIQUE DU PORTEFEUILLE EN TEMPS RÉEL
+  const currentCustomer = customers.find(c => c.id === selectedCustomerId);
+  const oldWalletUsed = editingOrder?.payments?.filter(p => p.method === "Portefeuille").reduce((sum, p) => sum + parseFloat(p.amount), 0) || 0;
+  const currentWalletUsed = orderPayments.filter(p => p.method === "Portefeuille").reduce((sum, p) => sum + parseFloat(p.amount), 0) || 0;
+  // Le solde réel disponible est le solde en base + ce qui a été payé lors de l'ancienne édition - ce qui est payé maintenant
+  const realAvailableWallet = (currentCustomer?.walletDA || 0) + oldWalletUsed - currentWalletUsed;
+
+  const handleUseWallet = () => {
+    if (realAvailableWallet <= 0 || resteToPay <= 0) return;
+    const amountToUse = Math.min(realAvailableWallet, resteToPay);
+    
+    setOrderPayments([...orderPayments, {
+      id: Date.now(),
+      amount: amountToUse,
+      date: new Date().toISOString().split("T")[0],
+      method: "Portefeuille",
+    }]);
+  };
+
   return (
     <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1000] flex items-end md:items-center justify-center p-0 md:p-4 overflow-hidden pt-10">
       <div className="bg-white w-full h-[92vh] md:h-auto md:max-h-[95vh] md:max-w-6xl rounded-t-[2rem] md:rounded-[2rem] p-4 md:p-6 shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 md:zoom-in-95">
         <ModalHeader title={editingOrder ? "Modifier Vente" : "Nouvelle Vente"} onClose={onClose} />
         <form onSubmit={(e) => handleSaveOrder(e, setIsSaving)} className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-4 pb-4">
-            {/* Header fields */}
+            
+            {/* EN-TÊTE */}
             <div className="bg-[#FAF7F2]/80 p-4 rounded-2xl md:rounded-[1.5rem] grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 shrink-0 border border-[#E8D5C4]/30">
               <div className="space-y-1">
                 <label className="text-[9px] uppercase font-bold ml-1 text-[#B8A99A]">Date</label>
@@ -1524,11 +1566,18 @@ const OrderModal = ({
               </div>
               <div className="space-y-1">
                 <label className="text-[9px] uppercase font-bold ml-1 text-[#B8A99A]">Cliente</label>
-                <select name="customerId" defaultValue={editingOrder?.customerId} onChange={(e) => { const c = customers.find((x) => x.id === e.target.value); if (c && c.wilaya) { const tariff = DELIVERY_TARIFFS[c.wilaya.substring(3).trim()]; if (tariff) setShippingNational(c.deliveryMode === "stopdesk" && tariff.stop ? tariff.stop : tariff.dom); } }} required className="w-full p-3 md:p-2.5 rounded-xl bg-white text-xs font-bold text-[#8D7B68] outline-none shadow-sm border border-gray-100">
+                <select name="customerId" value={selectedCustomerId} onChange={(e) => { 
+                  setSelectedCustomerId(e.target.value);
+                  const c = customers.find((x) => x.id === e.target.value); 
+                  if (c && c.wilaya) { 
+                    const tariff = DELIVERY_TARIFFS[c.wilaya.substring(3).trim()]; 
+                    if (tariff) setShippingNational(c.deliveryMode === "stopdesk" && tariff.stop ? tariff.stop : tariff.dom); 
+                  } 
+                }} required className="w-full p-3 md:p-2.5 rounded-xl bg-white text-xs font-bold text-[#8D7B68] outline-none shadow-sm border border-gray-100">
                   <option value="">Sélectionner...</option>
                   {sortedWilayas.map((w) => (
                     <optgroup key={w} label={w} className="bg-gray-50">
-                      {groupedCustomers[w].map((c) => <option key={c.id} value={c.id}>{c.name} • {c.deliveryMode === "stopdesk" ? "Stopdesk" : "Dom"}{c.walletDA > 0 ? ` 💰 (Crédit: ${c.walletDA} DA)` : ""}</option>)}
+                      {groupedCustomers[w].map((c) => <option key={c.id} value={c.id}>{c.name} • {c.deliveryMode === "stopdesk" ? "Stopdesk" : "Dom"}</option>)}
                     </optgroup>
                   ))}
                 </select>
@@ -1555,7 +1604,7 @@ const OrderModal = ({
               </div>
             </div>
 
-            {/* Items */}
+            {/* ARTICLES */}
             <div className="flex flex-col shrink-0">
               <h4 className="text-xs font-bold text-[#8D7B68] uppercase px-2 mb-2 shrink-0">Panier d'articles</h4>
               <div className="space-y-3 pr-1 pb-2">
@@ -1636,29 +1685,46 @@ const OrderModal = ({
               </button>
             </div>
 
-            {/* Payments + Summary */}
+            {/* PAIEMENTS & RÉSUMÉ */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0">
               <div className="bg-white p-4 md:p-5 rounded-2xl md:rounded-[1.5rem] border border-[#E8D5C4]/40 flex flex-col h-full shadow-sm">
                 <h4 className="text-[10px] text-[#B8A99A] font-bold uppercase tracking-widest mb-3 border-b border-gray-50 pb-2">Historique des Versements</h4>
+                
+                {/* WIDGET PORTEFEUILLE */}
+                {realAvailableWallet > 0 && resteToPay > 0 && (
+                  <div className="flex justify-between items-center bg-green-50 p-3 rounded-xl border border-green-200 mb-3 animate-in fade-in">
+                    <div>
+                      <span className="text-xs font-bold text-green-700">Portefeuille disponible</span>
+                      <p className="text-[10px] font-black text-green-800">{formatDA(realAvailableWallet)}</p>
+                    </div>
+                    <button type="button" onClick={handleUseWallet} className="px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-[10px] font-bold uppercase shadow-sm transition-colors">
+                      Utiliser
+                    </button>
+                  </div>
+                )}
+
                 <div className="flex-1 overflow-y-auto space-y-2 mb-3 min-h-[80px] custom-scrollbar">
                   {orderPayments.length === 0 ? (
                     <p className="text-[10px] text-gray-400 italic text-center pt-4">Aucun versement enregistré.</p>
                   ) : (
                     orderPayments.map((p) => (
-                      <div key={p.id} className="flex justify-between items-center bg-green-50/50 p-2 rounded-lg border border-green-100/50">
-                        <span className="text-[10px] font-bold text-gray-500">{p.date}</span>
+                      <div key={p.id} className="flex justify-between items-center bg-gray-50/80 p-2 rounded-lg border border-gray-100">
+                        <span className="text-[10px] font-bold text-gray-500 flex items-center gap-2">
+                          {p.date} 
+                          {p.method === "Portefeuille" && <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-md uppercase tracking-wider text-[8px]">Portefeuille</span>}
+                        </span>
                         <div className="flex items-center gap-3">
-                          <span className="text-xs font-black text-green-600">{formatDA(p.amount)}</span>
+                          <span className={`text-xs font-black ${p.method === "Portefeuille" ? "text-green-600" : "text-[#8D7B68]"}`}>{formatDA(p.amount)}</span>
                           <button type="button" onClick={() => setOrderPayments(orderPayments.filter((pay) => pay.id !== p.id))} className="text-red-300 hover:text-red-500"><Trash2 size={12} /></button>
                         </div>
                       </div>
                     ))
                   )}
                 </div>
-                <div className="flex gap-2 bg-gray-50 p-2 rounded-xl border border-gray-100">
+                <div className="flex gap-2 bg-gray-50 p-2 rounded-xl border border-gray-100 mt-auto">
                   <input type="date" value={newPaymentDate} onChange={(e) => setNewPaymentDate(e.target.value)} className="w-24 p-2 rounded-lg text-[10px] outline-none text-gray-600 font-bold border border-transparent focus:border-[#E8D5C4]" />
-                  <input type="number" placeholder="Montant DA" value={newPaymentAmount} onChange={(e) => setNewPaymentAmount(e.target.value)} className="flex-1 p-2 rounded-lg text-xs outline-none font-bold text-[#8D7B68] border border-transparent focus:border-[#E8D5C4]" />
-                  <button type="button" onClick={() => { if (newPaymentAmount) { setOrderPayments([...orderPayments, { id: Date.now(), amount: parseFloat(newPaymentAmount), date: newPaymentDate }]); setNewPaymentAmount(""); } }} className="bg-green-500 text-white p-2 rounded-lg shadow-sm"><Plus size={16} /></button>
+                  <input type="number" placeholder="Montant DA (Cash/CCP)" value={newPaymentAmount} onChange={(e) => setNewPaymentAmount(e.target.value)} className="flex-1 p-2 rounded-lg text-xs outline-none font-bold text-[#8D7B68] border border-transparent focus:border-[#E8D5C4]" />
+                  <button type="button" onClick={() => { if (newPaymentAmount) { setOrderPayments([...orderPayments, { id: Date.now(), amount: parseFloat(newPaymentAmount), date: newPaymentDate, method: "Cash" }]); setNewPaymentAmount(""); } }} className="bg-[#8D7B68] text-white p-2 rounded-lg shadow-sm"><Plus size={16} /></button>
                 </div>
               </div>
 
@@ -1711,6 +1777,7 @@ const OrderModal = ({
               </div>
             </div>
           </div>
+          
           <div className="shrink-0 pt-2 pb-2">
             <button type="submit" disabled={isSaving} className="w-full flex justify-center items-center gap-3 py-4 rounded-xl md:rounded-[1.5rem] text-white font-serif text-lg md:text-xl bg-[#8D7B68] shadow-lg font-bold uppercase tracking-widest transition-transform hover:-translate-y-1 disabled:opacity-50 disabled:hover:translate-y-0">
               {isSaving && <Loader2 size={24} className="animate-spin" />}

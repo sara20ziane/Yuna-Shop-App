@@ -429,6 +429,7 @@ const MainApp = ({ user }) => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [toast, setToast] = useState(null);
   const [showCalculator, setShowCalculator] = useState(false);
+  const [showTariffs, setShowTariffs] = useState(false);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -987,6 +988,9 @@ const galleryItems = useMemo(() => {
               </h2>
             </div>
             <div className="flex gap-2 md:hidden">
+                  <button onClick={() => setShowTariffs(true)} className="p-2.5 text-[#8D7B68] bg-white rounded-xl shadow-sm border border-[#E8D5C4]/30 hover:bg-[#FAF7F2]">
+                <Truck size={16} />
+              </button>
               <button onClick={() => setShowCalculator(true)} className="p-2.5 text-white bg-[#8D7B68] rounded-xl shadow-sm hover:scale-105 transition-transform">
                 <Calculator size={16} />
               </button>
@@ -996,6 +1000,9 @@ const galleryItems = useMemo(() => {
             </div>
           </div>
           <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
+                  <button onClick={() => setShowTariffs(true)} className="hidden md:flex px-4 py-2.5 text-[#8D7B68] bg-white border border-[#E8D5C4]/50 rounded-full shadow-sm hover:-translate-y-1 transition-transform items-center gap-2 font-bold text-xs">
+              <Truck size={14} /> Tarifs
+            </button>
             <button onClick={() => setShowCalculator(true)} className="hidden md:flex px-4 py-2.5 text-white bg-[#8D7B68] rounded-full shadow-sm hover:-translate-y-1 transition-transform items-center gap-2 font-bold text-xs">
               <Calculator size={14} /> Simulateur
             </button>
@@ -1612,6 +1619,7 @@ const galleryItems = useMemo(() => {
         />
       )}
       {showCalculator && <PriceCalculatorModal onClose={() => setShowCalculator(false)} currencyRates={currencyRates} formatDA={formatDA} />}
+{showTariffs && <DeliveryTariffModal onClose={() => setShowTariffs(false)} formatDA={formatDA} />} {/* <-- NOUVEAU */}
 
       {showAddSponsor && (
         <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1000] flex items-end md:items-center justify-center p-0 md:p-4">
@@ -2561,6 +2569,96 @@ const CustomerHistoryModal = ({ customer, orders, formatDA, onClose, onOpenOrder
               );
             })
           )}
+        </div>
+      </div>
+    </div>
+  );
+const DeliveryTariffModal = ({ onClose, formatDA }) => {
+  const [selectedWilaya, setSelectedWilaya] = useState("");
+
+  // Extraction du numéro et du nom
+  const wilayaNum = selectedWilaya ? selectedWilaya.substring(0, 2) : "--";
+  const wilayaName = selectedWilaya ? selectedWilaya.substring(3).trim() : "Sélectionnez une wilaya";
+  
+  // Récupération du tarif depuis ton dictionnaire existant
+  const tariffs = selectedWilaya && DELIVERY_TARIFFS[wilayaName] ? DELIVERY_TARIFFS[wilayaName] : null;
+
+  return (
+    <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[2000] flex items-end md:items-center justify-center p-0 md:p-4 pb-4">
+      <div className="bg-[#FDFBF7] w-full md:max-w-md rounded-t-[2rem] md:rounded-[2rem] shadow-2xl flex flex-col animate-in slide-in-from-bottom-4">
+        
+        {/* EN-TÊTE */}
+        <div className="p-6 border-b border-[#E8D5C4]/30 flex justify-between items-center bg-white rounded-t-[2rem]">
+          <h3 className="text-lg font-serif text-[#8D7B68] font-bold flex items-center gap-2 tracking-widest uppercase">
+            <Truck size={20} className="text-[#D4B996]" /> Tarifs Livraison
+          </h3>
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-50 rounded-full transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* CONTENU */}
+        <div className="p-6 space-y-6">
+          
+          {/* Sélecteur de Wilaya */}
+          <div className="space-y-1">
+            <label className="text-[9px] uppercase font-bold text-[#B8A99A] ml-1">Destination</label>
+            <div className="relative">
+              <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#D4B996]" />
+              <select 
+                value={selectedWilaya} 
+                onChange={(e) => setSelectedWilaya(e.target.value)}
+                className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white text-sm font-bold text-[#8D7B68] outline-none shadow-sm border border-[#E8D5C4]/50 focus:border-[#D4B996] appearance-none"
+              >
+                <option value="">Choisir une Wilaya...</option>
+                {WILAYAS_58.map((w) => <option key={w} value={w}>{w}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Affichage des Tarifs */}
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-[#E8D5C4]/30 space-y-5 relative overflow-hidden">
+            <div className="absolute -right-4 -bottom-4 opacity-[0.03] pointer-events-none">
+               <MapPin size={100} />
+            </div>
+
+            {/* Titre dynamique */}
+            <div className="flex items-center gap-3 border-b border-gray-50 pb-3">
+              <span className="w-10 h-10 bg-[#FAF7F2] border border-[#E8D5C4] rounded-xl flex items-center justify-center text-[#8D7B68] font-black text-lg shadow-sm">
+                {wilayaNum}
+              </span>
+              <span className="font-serif text-xl font-bold text-[#4A3F35] tracking-wide truncate">
+                {wilayaName}
+              </span>
+            </div>
+
+            {/* Tarifs */}
+            {selectedWilaya ? (
+              tariffs ? (
+                <div className="grid grid-cols-2 gap-3 relative z-10">
+                  <div className="bg-[#FAF7F2]/80 p-4 rounded-xl border border-[#E8D5C4]/40 flex flex-col items-center justify-center gap-1 text-center hover:-translate-y-1 transition-transform">
+                    <Home size={18} className="text-[#8D7B68] mb-1" />
+                    <span className="text-[9px] uppercase font-bold text-[#B8A99A] tracking-widest">À Domicile</span>
+                    <span className="text-lg font-black text-[#8D7B68]">{formatDA(tariffs.dom)}</span>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl border border-[#E8D5C4]/40 flex flex-col items-center justify-center gap-1 text-center shadow-sm hover:-translate-y-1 transition-transform">
+                    <Store size={18} className="text-[#D4B996] mb-1" />
+                    <span className="text-[9px] uppercase font-bold text-[#B8A99A] tracking-widest">Stopdesk</span>
+                    <span className="text-lg font-black text-[#8D7B68]">{formatDA(tariffs.stop)}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 text-center text-sm font-bold text-red-400 bg-red-50 rounded-xl border border-red-100">
+                  Tarif non défini pour cette wilaya.
+                </div>
+              )
+            ) : (
+              <div className="p-6 text-center text-xs font-bold text-gray-300">
+                Sélectionnez une wilaya pour voir les tarifs.
+              </div>
+            )}
+
+          </div>
         </div>
       </div>
     </div>

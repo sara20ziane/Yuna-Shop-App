@@ -175,7 +175,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyBn2UV3ilolO7Rqj2bo4dm_vQsn3v_6Ia4",
   authDomain: "yunas-shop-app.firebaseapp.com",
   projectId: "yunas-shop-app",
-  storageBucket: "yunas-shop-app.firebasestorage.app",
+  sstorageBucket: "yunas-shop-app.appspot.com"
   messagingSenderId: "584178390864",
   appId: "1:584178390864:web:40c32f3de1acdae2793e55",
 };

@@ -659,7 +659,28 @@ const MainApp = ({ user }) => {
 
     return { totalRevenue, totalBenefitBrut, totalSponsors, totalExpenses, netBenefit, ordersCount, topClients, netMarginPercentage, brutMarginPercentage, expensesPercentage, averageOrderValue };
   }, [orders, sponsors, expenses, filterYear, filterMonth]);
-
+const galleryItems = useMemo(() => {
+    let allItems = [];
+    orders.forEach(order => {
+      const d = order.date?.toDate ? order.date.toDate() : new Date(order.date);
+      const isSameMonth = d.getFullYear() === filterYear && (filterMonth === 0 || d.getMonth() + 1 === filterMonth);
+      
+      if (isSameMonth && order.items) {
+        order.items.forEach(item => {
+          if (item.itemImage) { // On ne garde que les articles qui ont une photo
+            allItems.push({
+              ...item,
+              orderNumber: order.orderNumber,
+              customerName: order.customerName,
+              orderId: order.id,
+              orderObj: order // On garde l'objet entier pour pouvoir ouvrir la commande en un clic !
+            });
+          }
+        });
+      }
+    });
+    return allItems;
+  }, [orders, filterYear, filterMonth]);
   const chartData = useMemo(() => {
     const months = ["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Août","Sep","Oct","Nov","Déc"];
     return months.map((monthName, index) => {
@@ -937,6 +958,7 @@ const MainApp = ({ user }) => {
         <nav className="flex-1 space-y-2 mt-4">
           <SidebarItem active={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} icon={LayoutDashboard} label="Tableau de bord" />
           <SidebarItem active={activeTab === "orders"} onClick={() => setActiveTab("orders")} icon={Package} label="Commandes" badge={lateDeliveries.length} />
+          <SidebarItem active={activeTab === "gallery"} onClick={() => setActiveTab("gallery")} icon={ImageIcon} label="Galerie" /> {/* <-- NOUVEAU */}
           <SidebarItem active={activeTab === "customers"} onClick={() => setActiveTab("customers")} icon={Users} label="Base Clientes" />
           <SidebarItem active={activeTab === "arrivages"} onClick={() => setActiveTab("arrivages")} icon={Globe} label="Arrivages (Logistique)" />
           <SidebarItem active={activeTab === "finances"} onClick={() => setActiveTab("finances")} icon={Euro} label="Trésorerie" />
@@ -1216,7 +1238,66 @@ const MainApp = ({ user }) => {
             </div>
           </div>
         )}
+{/* GALLERY TAB */}
+        {activeTab === "gallery" && (
+          <div className="space-y-4 md:space-y-6 animate-in slide-in-from-bottom-4">
+            
+            {/* Titre et compte */}
+            <div className="flex justify-between items-center bg-[#FAF7F2]/80 p-4 rounded-2xl md:rounded-full border border-[#E8D5C4]/30 shadow-sm">
+               <div className="flex items-center gap-3">
+                 <div className="p-2 bg-white rounded-full shadow-sm">
+                   <ImageIcon size={18} className="text-[#8D7B68]" />
+                 </div>
+                 <h3 className="font-serif font-bold text-[#8D7B68] text-sm md:text-base tracking-widest uppercase">Galerie Visuelle</h3>
+               </div>
+               <span className="text-[10px] md:text-xs font-black text-[#B8A99A] uppercase tracking-widest bg-white px-3 py-1.5 rounded-full shadow-sm">
+                 {galleryItems.length} article(s) trouvé(s)
+               </span>
+            </div>
 
+            {/* Grille de photos */}
+            {galleryItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 opacity-50">
+                <ImageIcon size={48} className="text-[#D4B996] mb-4" />
+                <p className="text-sm font-bold text-[#8D7B68]">Aucune photo pour ce mois.</p>
+                <p className="text-xs text-[#B8A99A] mt-1">Ajoute des photos aux articles dans tes commandes.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 pb-4">
+                {galleryItems.map((item, idx) => (
+                  <div 
+                    key={`${item.id}-${idx}`} 
+                    onClick={() => openOrderForEdit(item.orderObj)}
+                    className="bg-white rounded-2xl p-2 border border-[#E8D5C4]/30 shadow-sm hover:shadow-md transition-all cursor-pointer group flex flex-col hover:-translate-y-1"
+                  >
+                    <div className="aspect-square rounded-xl overflow-hidden mb-2 relative bg-[#FAF7F2]/50">
+                      <img 
+                        src={item.itemImage} 
+                        alt={item.name} 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
+                      />
+                      {/* Petit badge d'état superposé sur l'image */}
+                      <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-white/90 backdrop-blur-sm shadow-sm border border-white/50 text-[8px] font-black uppercase tracking-wider text-[#8D7B68]">
+                        {item.status}
+                      </div>
+                    </div>
+                    
+                    <div className="px-1 flex flex-col gap-0.5">
+                      <span className="text-[10px] font-black text-[#8D7B68]">{item.orderNumber}</span>
+                      <span className="text-[11px] font-bold text-[#4A3F35] truncate w-full" title={item.customerName}>
+                        {item.customerName}
+                      </span>
+                      <span className="text-[9px] text-[#B8A99A] font-medium truncate w-full mt-1" title={item.name}>
+                        {item.name}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         {/* CUSTOMERS TAB */}
         {activeTab === "customers" && (
           <div className="space-y-4 md:space-y-6 animate-in slide-in-from-bottom-4">
@@ -1455,6 +1536,7 @@ const MainApp = ({ user }) => {
         {[
           { tab: "dashboard", icon: LayoutDashboard, label: "Bord" },
           { tab: "orders", icon: Package, label: "Ventes" },
+          { tab: "gallery", icon: ImageIcon, label: "Galerie" }, // <-- NOUVEAU
           { tab: "customers", icon: Users, label: "Clientes" },
           { tab: "arrivages", icon: Globe, label: "Arrivages" },
           { tab: "finances", icon: Euro, label: "Tréso" },

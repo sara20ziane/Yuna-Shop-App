@@ -195,7 +195,7 @@ const uploadFile = async (file, path) => {
   formData.append("image", file);
 
   // Remplace "TA_CLE_API" par la clé que tu as copiée sur le site ImgBB
-  const API_KEY = "TA_CLE_API"; 
+  const API_KEY = "f160f234add3f81b6647dfd8dbdabf6b"; 
 
   try {
     const response = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, {

@@ -186,22 +186,42 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 const appId = "yunas-shop-crm";
 
-// --- HELPERS STORAGE ---
+// --- HELPERS STORAGE (Version ImgBB - Sans Firebase Storage) ---
 const uploadFile = async (file, path) => {
   if (!file) return null;
-  const storageRef = ref(storage, path);
-  await uploadBytes(storageRef, file);
-  return await getDownloadURL(storageRef);
+  
+  // Prépare l'image pour l'envoi
+  const formData = new FormData();
+  formData.append("image", file);
+
+  // Remplace "TA_CLE_API" par la clé que tu as copiée sur le site ImgBB
+  const API_KEY = "TA_CLE_API"; 
+
+  try {
+    const response = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, {
+      method: "POST",
+      body: formData,
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      // Retourne le lien direct de l'image (Firebase Firestore va sauvegarder ce lien texte)
+      return data.data.url; 
+    } else {
+      console.error("Erreur ImgBB:", data);
+      return null;
+    }
+  } catch (error) {
+    console.error("Erreur de connexion:", error);
+    return null;
+  }
 };
 
 const deleteFile = async (fileUrl) => {
-  if (!fileUrl) return;
-  try {
-    const fileRef = ref(storage, fileUrl);
-    await deleteObject(fileRef);
-  } catch (error) {
-    console.log("Erreur suppression image:", error);
-  }
+  // ImgBB garde les images, on retire juste le lien de la base de données
+  // Pas besoin de logique complexe ici !
+  console.log("Image détachée de la base de données :", fileUrl);
 };
 
 // --- HELPERS ---

@@ -1602,7 +1602,6 @@ const OrderModal = ({
   orderDiscount, setOrderDiscount, orderRefundAmount, setOrderRefundAmount,
   orderReceiptImage, setOrderReceiptImage,
 }) => {
-}) => {
   const [defaultArrivage, setDefaultArrivage] = useState(editingOrder ? orderItems[0]?.arrivageId || "" : "");
   const [newPaymentAmount, setNewPaymentAmount] = useState("");
   const [newPaymentDate, setNewPaymentDate] = useState(new Date().toISOString().split("T")[0]);

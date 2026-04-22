@@ -57,8 +57,8 @@ import {
   Download,
   Printer,
   Loader2,
-  UploadCloud, // <-- NOUVEAU
-  Image as ImageIcon // <-- NOUVEAU
+  UploadCloud,
+  Image as ImageIcon
 } from "lucide-react";
 import {
   LineChart,
@@ -183,10 +183,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app); // <-- NOUVEAU : On active le Storage
+const storage = getStorage(app);
 const appId = "yunas-shop-crm";
 
-// --- NOUVEAUX HELPERS STORAGE ---
+// --- HELPERS STORAGE ---
 const uploadFile = async (file, path) => {
   if (!file) return null;
   const storageRef = ref(storage, path);
@@ -310,10 +310,10 @@ const Toast = ({ msg, type, onClose }) => {
       }`}
     >
       <span className="text-xs font-bold">{msg}</span>
-      <button onClick={onClose} className="opacity-80 hover:opacity-100"><X size={14} /></button>
-    </div>
-  );
-}; // <--- AJOUTE JUSTE CECI POUR FERMER LE TOAST !
+      <button onClick={onClose} className="opacity-80 hover:opacity-100"><X size={14} /></button>
+    </div>
+  );
+};
 
 const ImageUploader = ({ compact, value, onChange, path }) => {
   const [loading, setLoading] = useState(false);
@@ -428,6 +428,7 @@ const MainApp = ({ user }) => {
   const [orderStatusFilter, setOrderStatusFilter] = useState("");
   const [activeTab, setActiveTab] = useState("dashboard");
   const [toast, setToast] = useState(null);
+  
   const [showCalculator, setShowCalculator] = useState(false);
   const [showTariffs, setShowTariffs] = useState(false);
 
@@ -625,6 +626,29 @@ const MainApp = ({ user }) => {
     return filteredArrivages.reduce((sum, arr) => sum + (parseFloat(arr.totalWeightKg) || 0), 0);
   }, [filteredArrivages]);
 
+  const galleryItems = useMemo(() => {
+    let allItems = [];
+    orders.forEach(order => {
+      const d = order.date?.toDate ? order.date.toDate() : new Date(order.date);
+      const isSameMonth = d.getFullYear() === filterYear && (filterMonth === 0 || d.getMonth() + 1 === filterMonth);
+      
+      if (isSameMonth && order.items) {
+        order.items.forEach(item => {
+          if (item.itemImage) { 
+            allItems.push({
+              ...item,
+              orderNumber: order.orderNumber,
+              customerName: order.customerName,
+              orderId: order.id,
+              orderObj: order 
+            });
+          }
+        });
+      }
+    });
+    return allItems;
+  }, [orders, filterYear, filterMonth]);
+
   const stats = useMemo(() => {
     const dOrders = orders.filter((o) => {
       const d = o.date?.toDate ? o.date.toDate() : new Date(o.date);
@@ -660,28 +684,7 @@ const MainApp = ({ user }) => {
 
     return { totalRevenue, totalBenefitBrut, totalSponsors, totalExpenses, netBenefit, ordersCount, topClients, netMarginPercentage, brutMarginPercentage, expensesPercentage, averageOrderValue };
   }, [orders, sponsors, expenses, filterYear, filterMonth]);
-const galleryItems = useMemo(() => {
-    let allItems = [];
-    orders.forEach(order => {
-      const d = order.date?.toDate ? order.date.toDate() : new Date(order.date);
-      const isSameMonth = d.getFullYear() === filterYear && (filterMonth === 0 || d.getMonth() + 1 === filterMonth);
-      
-      if (isSameMonth && order.items) {
-        order.items.forEach(item => {
-          if (item.itemImage) { // On ne garde que les articles qui ont une photo
-            allItems.push({
-              ...item,
-              orderNumber: order.orderNumber,
-              customerName: order.customerName,
-              orderId: order.id,
-              orderObj: order // On garde l'objet entier pour pouvoir ouvrir la commande en un clic !
-            });
-          }
-        });
-      }
-    });
-    return allItems;
-  }, [orders, filterYear, filterMonth]);
+
   const chartData = useMemo(() => {
     const months = ["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Août","Sep","Oct","Nov","Déc"];
     return months.map((monthName, index) => {
@@ -696,7 +699,6 @@ const galleryItems = useMemo(() => {
     });
   }, [orders, sponsors, expenses, filterYear]);
 
-  // ✅ CORRECTION PRINCIPALE : handleSaveCustomer était manquant
   const handleSaveCustomer = async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
@@ -763,7 +765,7 @@ const galleryItems = useMemo(() => {
         }
       }
 
-      // 2. CALCUL AUTOMATIQUE DU PORTEFEUILLE (Déduction ou Remboursement)
+      // 2. CALCUL AUTOMATIQUE DU PORTEFEUILLE 
       const oldWalletUsed = editingOrder?.payments?.filter(p => p.method === "Portefeuille").reduce((sum, p) => sum + parseFloat(p.amount), 0) || 0;
       const newWalletUsed = orderPayments.filter(p => p.method === "Portefeuille").reduce((sum, p) => sum + parseFloat(p.amount), 0) || 0;
       const walletDiff = newWalletUsed - oldWalletUsed;
@@ -782,20 +784,18 @@ const galleryItems = useMemo(() => {
         items: finalItems,
         payments: orderPayments,
         shippingNational: parseFloat(shippingNational) || 0,
-        advancePayment: totalAdvance, // Le paiement portefeuille est inclus dedans
+        advancePayment: totalAdvance, 
         totalVente: t.venteTotal,
         benefit: t.benefit,
         status: orderStatus,
         date: Timestamp.fromDate(selectedDate),
         discount: parseFloat(orderDiscount) || 0,
         refundAmount: parseFloat(orderRefundAmount) || 0,
-        receiptImage: orderReceiptImage, // <-- NOUVEAU
+        receiptImage: orderReceiptImage, 
       };
 
-      // 4. AJOUT D'EXCÉDENT AU PORTEFEUILLE (Si la cliente paie trop en cash)
+      // 4. AJOUT D'EXCÉDENT AU PORTEFEUILLE 
       const totalVenteEtLivraison = t.venteTotal + (parseFloat(shippingNational) || 0) - (parseFloat(orderDiscount) || 0);
-      
-      // NOUVEAU : On calcule l'argent RÉELLEMENT encaissé en déduisant ce que tu as remboursé
       const totalRemboursement = parseFloat(orderRefundAmount) || 0;
       const cashPayments = orderPayments.filter(p => p.method !== "Portefeuille").reduce((sum, p) => sum + parseFloat(p.amount), 0);
       const netCashPayments = cashPayments - totalRemboursement; 
@@ -805,7 +805,6 @@ const galleryItems = useMemo(() => {
       if (netCashPayments > resteAvantCash && customerId) {
         const excedent = netCashPayments - resteAvantCash;
         const customerRef = doc(db, "artifacts", appId, "public", "data", "customers", customerId);
-        // On récupère le solde mis à jour après la déduction éventuelle
         const updatedWallet = (customer?.walletDA || 0) - walletDiff;
         await updateDoc(customerRef, { walletDA: updatedWallet + excedent });
         showToast(`Excédent de ${excedent} DA ajouté au portefeuille cliente`);
@@ -922,7 +921,6 @@ const galleryItems = useMemo(() => {
     }
   };
 
-  // Helper to open order for editing
   const openOrderForEdit = (o) => {
     setEditingOrder(o);
     setOrderItems(o.items || []);
@@ -938,9 +936,8 @@ const galleryItems = useMemo(() => {
     setOrderStatus(o.status);
     setOrderDate(existingDate);
     setOrderNumber(o.orderNumber);
-    setOrderReceiptImage(o.receiptImage || ""); // <-- NOUVEAU
+    setOrderReceiptImage(o.receiptImage || "");
     setShowAddOrder(true);
-    
   };
 
   return (
@@ -959,7 +956,7 @@ const galleryItems = useMemo(() => {
         <nav className="flex-1 space-y-2 mt-4">
           <SidebarItem active={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} icon={LayoutDashboard} label="Tableau de bord" />
           <SidebarItem active={activeTab === "orders"} onClick={() => setActiveTab("orders")} icon={Package} label="Commandes" badge={lateDeliveries.length} />
-          <SidebarItem active={activeTab === "gallery"} onClick={() => setActiveTab("gallery")} icon={ImageIcon} label="Galerie" /> {/* <-- NOUVEAU */}
+          <SidebarItem active={activeTab === "gallery"} onClick={() => setActiveTab("gallery")} icon={ImageIcon} label="Galerie" />
           <SidebarItem active={activeTab === "customers"} onClick={() => setActiveTab("customers")} icon={Users} label="Base Clientes" />
           <SidebarItem active={activeTab === "arrivages"} onClick={() => setActiveTab("arrivages")} icon={Globe} label="Arrivages (Logistique)" />
           <SidebarItem active={activeTab === "finances"} onClick={() => setActiveTab("finances")} icon={Euro} label="Trésorerie" />
@@ -988,7 +985,7 @@ const galleryItems = useMemo(() => {
               </h2>
             </div>
             <div className="flex gap-2 md:hidden">
-                  <button onClick={() => setShowTariffs(true)} className="p-2.5 text-[#8D7B68] bg-white rounded-xl shadow-sm border border-[#E8D5C4]/30 hover:bg-[#FAF7F2]">
+              <button onClick={() => setShowTariffs(true)} className="p-2.5 text-[#8D7B68] bg-white rounded-xl shadow-sm border border-[#E8D5C4]/30 hover:bg-[#FAF7F2]">
                 <Truck size={16} />
               </button>
               <button onClick={() => setShowCalculator(true)} className="p-2.5 text-white bg-[#8D7B68] rounded-xl shadow-sm hover:scale-105 transition-transform">
@@ -1000,7 +997,7 @@ const galleryItems = useMemo(() => {
             </div>
           </div>
           <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
-                  <button onClick={() => setShowTariffs(true)} className="hidden md:flex px-4 py-2.5 text-[#8D7B68] bg-white border border-[#E8D5C4]/50 rounded-full shadow-sm hover:-translate-y-1 transition-transform items-center gap-2 font-bold text-xs">
+            <button onClick={() => setShowTariffs(true)} className="hidden md:flex px-4 py-2.5 text-[#8D7B68] bg-white border border-[#E8D5C4]/50 rounded-full shadow-sm hover:-translate-y-1 transition-transform items-center gap-2 font-bold text-xs">
               <Truck size={14} /> Tarifs
             </button>
             <button onClick={() => setShowCalculator(true)} className="hidden md:flex px-4 py-2.5 text-white bg-[#8D7B68] rounded-full shadow-sm hover:-translate-y-1 transition-transform items-center gap-2 font-bold text-xs">
@@ -1144,7 +1141,7 @@ const galleryItems = useMemo(() => {
                     setOrderStatus("A commander");
                     setOrderDiscount(0);
                     setOrderRefundAmount(0);
-                    setOrderReceiptImage(""); // <-- NOUVEAU
+                    setOrderReceiptImage("");
                     setShowAddOrder(true);
                     setEditingOrder(null);
                   }}
@@ -1245,11 +1242,10 @@ const galleryItems = useMemo(() => {
             </div>
           </div>
         )}
-{/* GALLERY TAB */}
+
+        {/* GALLERY TAB */}
         {activeTab === "gallery" && (
           <div className="space-y-4 md:space-y-6 animate-in slide-in-from-bottom-4">
-            
-            {/* Titre et compte */}
             <div className="flex justify-between items-center bg-[#FAF7F2]/80 p-4 rounded-2xl md:rounded-full border border-[#E8D5C4]/30 shadow-sm">
                <div className="flex items-center gap-3">
                  <div className="p-2 bg-white rounded-full shadow-sm">
@@ -1262,7 +1258,6 @@ const galleryItems = useMemo(() => {
                </span>
             </div>
 
-            {/* Grille de photos */}
             {galleryItems.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 opacity-50">
                 <ImageIcon size={48} className="text-[#D4B996] mb-4" />
@@ -1284,12 +1279,10 @@ const galleryItems = useMemo(() => {
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         loading="lazy"
                       />
-                      {/* Petit badge d'état superposé sur l'image */}
                       <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-white/90 backdrop-blur-sm shadow-sm border border-white/50 text-[8px] font-black uppercase tracking-wider text-[#8D7B68]">
                         {item.status}
                       </div>
                     </div>
-                    
                     <div className="px-1 flex flex-col gap-0.5">
                       <span className="text-[10px] font-black text-[#8D7B68]">{item.orderNumber}</span>
                       <span className="text-[11px] font-bold text-[#4A3F35] truncate w-full" title={item.customerName}>
@@ -1305,6 +1298,7 @@ const galleryItems = useMemo(() => {
             )}
           </div>
         )}
+
         {/* CUSTOMERS TAB */}
         {activeTab === "customers" && (
           <div className="space-y-4 md:space-y-6 animate-in slide-in-from-bottom-4">
@@ -1543,7 +1537,7 @@ const galleryItems = useMemo(() => {
         {[
           { tab: "dashboard", icon: LayoutDashboard, label: "Bord" },
           { tab: "orders", icon: Package, label: "Ventes" },
-          { tab: "gallery", icon: ImageIcon, label: "Galerie" }, // <-- NOUVEAU
+          { tab: "gallery", icon: ImageIcon, label: "Galerie" }, 
           { tab: "customers", icon: Users, label: "Clientes" },
           { tab: "arrivages", icon: Globe, label: "Arrivages" },
           { tab: "finances", icon: Euro, label: "Tréso" },
@@ -1590,8 +1584,8 @@ const galleryItems = useMemo(() => {
           setOrderDiscount={setOrderDiscount}
           orderRefundAmount={orderRefundAmount}
           setOrderRefundAmount={setOrderRefundAmount}
-          orderReceiptImage={orderReceiptImage}       // <-- NOUVEAU
-          setOrderReceiptImage={setOrderReceiptImage} // <-- NOUVEAU
+          orderReceiptImage={orderReceiptImage}
+          setOrderReceiptImage={setOrderReceiptImage} 
           onClose={() => { setShowAddOrder(false); setEditingOrder(null); }}
         />
       )}
@@ -1619,7 +1613,7 @@ const galleryItems = useMemo(() => {
         />
       )}
       {showCalculator && <PriceCalculatorModal onClose={() => setShowCalculator(false)} currencyRates={currencyRates} formatDA={formatDA} />}
-{showTariffs && <DeliveryTariffModal onClose={() => setShowTariffs(false)} formatDA={formatDA} />} {/* <-- NOUVEAU */}
+      {showTariffs && <DeliveryTariffModal onClose={() => setShowTariffs(false)} formatDA={formatDA} />} 
 
       {showAddSponsor && (
         <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1000] flex items-end md:items-center justify-center p-0 md:p-4">
@@ -1690,7 +1684,7 @@ const OrderModal = ({
   config, arrivages, handleSaveOrder, formatDA, calculateTotals,
   shippingNational, setShippingNational, onClose,
   orderDiscount, setOrderDiscount, orderRefundAmount, setOrderRefundAmount,
-  orderReceiptImage, setOrderReceiptImage,
+  orderReceiptImage, setOrderReceiptImage,
 }) => {
   const [defaultArrivage, setDefaultArrivage] = useState(editingOrder ? orderItems[0]?.arrivageId || "" : "");
   const [newPaymentAmount, setNewPaymentAmount] = useState("");
@@ -1729,11 +1723,9 @@ const OrderModal = ({
   const isFullyPaidStatus = orderStatus === "Payée" || orderStatus === "Payée et livrée";
   const resteToPay = isFullyPaidStatus ? 0 : Math.max(0, totalVenteEtLivraison - netAdvance);
 
-  // LOGIQUE DU PORTEFEUILLE EN TEMPS RÉEL
   const currentCustomer = customers.find(c => c.id === selectedCustomerId);
   const oldWalletUsed = editingOrder?.payments?.filter(p => p.method === "Portefeuille").reduce((sum, p) => sum + parseFloat(p.amount), 0) || 0;
   const currentWalletUsed = orderPayments.filter(p => p.method === "Portefeuille").reduce((sum, p) => sum + parseFloat(p.amount), 0) || 0;
-  // Le solde réel disponible est le solde en base + ce qui a été payé lors de l'ancienne édition - ce qui est payé maintenant
   const realAvailableWallet = (currentCustomer?.walletDA || 0) + oldWalletUsed - currentWalletUsed;
 
   const handleUseWallet = () => {
@@ -1845,12 +1837,12 @@ const OrderModal = ({
                           <span className="text-[9px] font-bold text-[#D4B996] uppercase">Vente DA</span>
                           <input type="number" className="w-full outline-none text-sm md:text-xs font-black text-[#8D7B68] text-right bg-transparent" value={item.priceVente} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, priceVente: e.target.value } : oi))} />
                         </div>
-                            <ImageUploader 
-      compact 
-      value={item.itemImage} 
-      path={`orders/${orderNumber}/items`} 
-      onChange={(url) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, itemImage: url } : oi))} 
-    />
+                        <ImageUploader 
+                          compact 
+                          value={item.itemImage} 
+                          path={`orders/${orderNumber}/items`} 
+                          onChange={(url) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, itemImage: url } : oi))} 
+                        />
                         <button type="button" onClick={() => setOrderItems(orderItems.filter((oi) => oi.id !== item.id))} className="text-red-400 bg-red-50 hover:bg-red-100 p-2.5 md:p-1.5 rounded-lg transition-colors shadow-sm"><Trash2 size={16} /></button>
                       </div>
                     </div>
@@ -1928,11 +1920,11 @@ const OrderModal = ({
                     ))
                   )}
                 </div>
-                  <ImageUploader
-      value={orderReceiptImage}
-      path={`orders/${orderNumber}/receipts`}
-      onChange={setOrderReceiptImage}
-    />
+                <ImageUploader
+                  value={orderReceiptImage}
+                  path={`orders/${orderNumber}/receipts`}
+                  onChange={setOrderReceiptImage}
+                />
                 <div className="flex gap-2 bg-gray-50 p-2 rounded-xl border border-gray-100 mt-auto">
                   <input type="date" value={newPaymentDate} onChange={(e) => setNewPaymentDate(e.target.value)} className="w-24 p-2 rounded-lg text-[10px] outline-none text-gray-600 font-bold border border-transparent focus:border-[#E8D5C4]" />
                   <input type="number" placeholder="Montant DA (Cash/CCP)" value={newPaymentAmount} onChange={(e) => setNewPaymentAmount(e.target.value)} className="flex-1 p-2 rounded-lg text-xs outline-none font-bold text-[#8D7B68] border border-transparent focus:border-[#E8D5C4]" />
@@ -2003,7 +1995,6 @@ const OrderModal = ({
 };
 
 const CustomerModal = ({ editingCustomer, handleSaveCustomer, onClose }) => {
-  // États sécurisés et contrôlés pour éviter tout blocage ou page blanche
   const [wilaya, setWilaya] = useState(editingCustomer?.wilaya || "");
   const [commune, setCommune] = useState(editingCustomer?.commune || "");
   const [isCustomCommune, setIsCustomCommune] = useState(false);
@@ -2011,11 +2002,9 @@ const CustomerModal = ({ editingCustomer, handleSaveCustomer, onClose }) => {
   const [platform, setPlatform] = useState(editingCustomer?.platform || "instagram");
   const [wallet, setWallet] = useState(editingCustomer?.walletDA || 0);
 
-  // Sécurité anti-crash pour l'initialisation des communes
   const availableCommunes = wilaya ? (SUGGESTED_COMMUNES[wilaya] || []) : [];
 
   useEffect(() => {
-    // Vérification au chargement pour savoir si la commune est dans la liste ou si c'est une saisie libre
     if (editingCustomer?.wilaya && editingCustomer?.commune) {
       const sugg = SUGGESTED_COMMUNES[editingCustomer.wilaya] || [];
       if (sugg.length > 0 && !sugg.includes(editingCustomer.commune)) {
@@ -2573,14 +2562,14 @@ const CustomerHistoryModal = ({ customer, orders, formatDA, onClose, onOpenOrder
       </div>
     </div>
   );
+};
+
 const DeliveryTariffModal = ({ onClose, formatDA }) => {
   const [selectedWilaya, setSelectedWilaya] = useState("");
 
-  // Extraction du numéro et du nom
   const wilayaNum = selectedWilaya ? selectedWilaya.substring(0, 2) : "--";
   const wilayaName = selectedWilaya ? selectedWilaya.substring(3).trim() : "Sélectionnez une wilaya";
   
-  // Récupération du tarif depuis ton dictionnaire existant
   const tariffs = selectedWilaya && DELIVERY_TARIFFS[wilayaName] ? DELIVERY_TARIFFS[wilayaName] : null;
 
   return (

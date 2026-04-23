@@ -451,6 +451,7 @@ const MainApp = ({ user }) => {
   
   const [showCalculator, setShowCalculator] = useState(false);
   const [showTariffs, setShowTariffs] = useState(false);
+  const [selectedOrders, setSelectedOrders] = useState([]);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -1226,7 +1227,7 @@ const MainApp = ({ user }) => {
                              onChange={() => { if (selectedOrders.length === filteredOrders.length) { setSelectedOrders([]); } else { setSelectedOrders(filteredOrders.map(o => o.id)); } }} 
                              className="cursor-pointer accent-[#8D7B68] w-4 h-4" />
                     </th>
-                    <th className="p-4">N°</th>
+                    <th className="p-4">N°</th>    
                     <th className="p-4">Cliente</th>
                     <th className="p-4">État</th>
                     <th className="p-4 text-right">Total</th>
@@ -1246,7 +1247,13 @@ const MainApp = ({ user }) => {
                                  checked={selectedOrders.includes(o.id)} 
                                  onChange={() => { setSelectedOrders(prev => prev.includes(o.id) ? prev.filter(id => id !== o.id) : [...prev, o.id]) }} 
                                  className="cursor-pointer accent-[#8D7B68] w-4 h-4" />
-                        </td>      
+                        </td> 
+                       <td className="p-4 w-8" onClick={(e) => e.stopPropagation()}>
+                          <input type="checkbox" 
+                                 checked={selectedOrders.includes(o.id)} 
+                                 onChange={() => { setSelectedOrders(prev => prev.includes(o.id) ? prev.filter(id => id !== o.id) : [...prev, o.id]) }} 
+                                 className="cursor-pointer accent-[#8D7B68] w-4 h-4" />
+                        </td>            
                         <td className="p-4 font-bold text-[#8D7B68]">
                           {o.orderNumber}
                           {isLate && <AlertTriangle size={12} className="inline ml-2 text-red-500 animate-pulse" title="En livraison depuis +7 jours" />}

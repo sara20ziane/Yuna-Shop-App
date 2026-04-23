@@ -1317,14 +1317,14 @@ const MainApp = ({ user }) => {
                         <button onClick={() => setShowReceipt(o)} className="text-[#D4B996] p-1.5"><Receipt size={16} /></button>
                       </div>
                       <div className="flex gap-1">
-                        <button onClick={() => openOrderForEdit(o)} className="text-gray-400 p-1.5"><Edit3 size={16} /></button>
-                        <button onClick={() => setDeleteTarget({ id: o.id, collection: "orders", label: o.orderNumber })} className="text-red-300 p-1.5"><Trash2 size={16} /></button>
+                          <button onClick={() => openOrderForEdit(o)} className="text-gray-400 p-1.5"><Edit3 size={16} /></button>
+                          <button onClick={() => setDeleteTarget({ id: o.id, collection: "orders", label: o.orderNumber })} className="text-red-300 p-1.5"><Trash2 size={16} /></button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
 
         {/* GALLERY TAB */}
         {activeTab === "gallery" && (

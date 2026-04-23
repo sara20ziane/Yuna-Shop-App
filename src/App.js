@@ -938,8 +938,9 @@ const handleSendToZimou = async (order) => {
       price: resteToPay.toString(),
       free_delivery: resteToPay === 0 ? "1" : "0",
       quantity_items: order.items?.length || 1,
-      // ON REMPLACE delivery_type PAR delivery_type_id (SANS GUILLEMETS POUR LE CHIFFRE)
-      delivery_type_id: customer.deliveryMode === "stopdesk" ? 2 : 1, 
+      // CONFIGURATION FINALE : On envoie les deux formats attendus
+      delivery_type_id: customer.deliveryMode === "stopdesk" ? 2 : 1,
+      delivery_type: customer.deliveryMode === "stopdesk" ? "2" : "1", 
       wilaya: wilayaClean,
       commune: customer.commune || "",
       can_be_opened: true, 

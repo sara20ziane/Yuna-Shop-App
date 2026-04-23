@@ -903,7 +903,96 @@ const MainApp = ({ user }) => {
     showToast("Élément supprimé", "error");
     setDeleteTarget(null);
   };
+const handleSendToZimou = async (order) => {
+    // 1. Récupérer la cliente
+    const customer = customers.find((c) => c.id === order.customerId);
+    if (!customer) {
+      showToast("Cliente introuvable", "error");
+      return;
+    }
 
+    // 2. Calculs (Reste à payer et Poids total en Kg)
+    const resteToPay = calculateReste(order);
+    const totalWeightG = (order.items || []).reduce((sum, item) => sum + (parseFloat(item.weightG) || 0), 0);
+    const totalWeightKg = totalWeightG / 1000;
+
+    // 3. Préparer les données textuelles
+    const nameParts = customer.name.trim().split(" ");
+    const firstName = nameParts[0] || "Inconnue";
+    const lastName = nameParts.slice(1).join(" ") || "Inconnue";
+    const wilayaClean = customer.wilaya ? customer.wilaya.substring(3).trim() : "";
+    
+    let adresseLivraison = customer.deliveryMode === "stopdesk" 
+      ? `Stopdesk : ${customer.stopdeskName}` 
+      : "Livraison à Domicile";
+
+    const articlesDesc = (order.items || [])
+      .filter(i => i.status !== "Retourné Fournisseur")
+      .map(i => `${i.name} (${i.color}/${i.size})`)
+      .join(" + ");
+
+    // 4. Le Payload EXACT demandé par Zimou
+    const payload = {
+      type: "ecommerce",
+      warehouse_id: 0,
+      name: articlesDesc || "Articles Yuna's Shop",
+      client_last_name: lastName,
+      client_first_name: firstName,
+      client_phone: customer.phone,
+      client_phone2: customer.phone2 || "",
+      address: adresseLivraison,
+      order_id: order.orderNumber,
+      price: resteToPay.toString(),
+      free_delivery: resteToPay === 0 ? "1" : "0",
+      quantity_items: order.items?.length || 1,
+      tracking_partner_company: "",
+      delivery_type: customer.deliveryMode === "stopdesk" ? "stopdesk" : "domicile",
+      wilaya: wilayaClean,
+      commune: customer.commune || "",
+      office_id: 0, // Laissé à 0, Zimou l'attribue généralement via la commune
+      hub_id: 0,
+      can_be_opened: true, // Autorise l'ouverture du colis
+      observation: "À livrer avec soin - Yuna's Shop",
+      returned_product: "",
+      weight: totalWeightKg,
+      detail: {
+        is_assured: false,
+        declared_value: 0,
+        has_followed_tag: true
+      },
+      volumetric: {
+        length: 0,
+        width: 0,
+        height: 0
+      }
+    };
+
+    // 5. Envoi vers le serveur Zimou
+    try {
+      showToast("Envoi vers Zimou en cours...");
+      const response = await fetch("https://zimou.express/api/v3/packages", {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": `321237|p12PHZuJJi8OIue389s12MbLmi36LRWt74lKaCRRa7e155a0` // REMPLACE CECI PAR TON VRAI TOKEN
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+      
+      if (response.ok) {
+        showToast("Colis ajouté avec succès sur Zimou !");
+      } else {
+        console.error("Erreur Zimou:", result);
+        showToast(`Erreur Zimou: Vérifie tes logs`, "error");
+      }
+    } catch (error) {
+      console.error("Erreur réseau:", error);
+      showToast("Erreur de connexion à Zimou", "error");
+    }
+  };
   const exportCSV = () => {
     if (filteredOrders.length === 0) { showToast("Aucune donnée à exporter", "error"); return; }
     const headers = ["N° Commande","Date","Cliente","Statut","Total DA","Avance DA","Reste DA"];
@@ -1622,7 +1711,7 @@ const MainApp = ({ user }) => {
       )}
       {showCostBreakdown && <CostBreakdownModal order={showCostBreakdown} onClose={() => setShowCostBreakdown(null)} formatDA={formatDA} calculateTotals={calculateTotals} />}
       {showReceipt && <ReceiptModal order={showReceipt} onClose={() => setShowReceipt(null)} formatDA={formatDA} />}
-      {showDeliverySlip && <DeliverySlipModal order={showDeliverySlip} customers={customers} onClose={() => setShowDeliverySlip(null)} formatDA={formatDA} />}
+      {showDeliverySlip && <DeliverySlipModal order={showDeliverySlip} customers={customers} onClose={() => setShowDeliverySlip(null)} formatDA={formatDA} handleSendToZimou={handleSendToZimou} />}
       {showCustomerHistory && (
         <CustomerHistoryModal
           customer={showCustomerHistory}
@@ -2352,7 +2441,7 @@ const PriceCalculatorModal = ({ onClose, currencyRates, formatDA }) => {
   );
 };
 
-const DeliverySlipModal = ({ order, customers, onClose, formatDA }) => {
+const DeliverySlipModal = ({ order, customers, onClose, formatDA, handleSendToZimou }) => {
   const customer = customers.find((c) => c.id === order.customerId);
   const items = order.items || [];
   let calculatedSubtotal = 0;
@@ -2380,7 +2469,15 @@ const DeliverySlipModal = ({ order, customers, onClose, formatDA }) => {
   return (
     <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1010] flex items-center justify-center p-4 print:absolute print:inset-0 print:bg-white print:p-0 print:z-[9999] print:block print:h-auto">
       <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl relative animate-in zoom-in-95 flex flex-col max-h-[90vh] overflow-hidden print:w-full print:max-w-full print:max-h-none print:shadow-none print:rounded-none print:animate-none print:transform-none print:border-none print:h-auto print:overflow-visible">
-        <div className="absolute top-4 right-4 flex gap-2 z-20 print:hidden">
+        <div className="absolute top-4 right-4 flex gap-2 z-20 items-center print:hidden">
+          {/* NOUVEAU BOUTON ZIMOU */}
+          <button 
+            onClick={() => handleSendToZimou(order)} 
+            className="px-4 py-1.5 bg-[#8D7B68] text-white font-bold text-[10px] uppercase tracking-widest rounded-full hover:bg-[#4A3F35] transition-colors shadow-sm flex items-center gap-2"
+          >
+            Expédier via Zimou
+          </button>
+          
           <button onClick={() => window.print()} className="p-2 bg-gray-50/90 backdrop-blur-md rounded-full hover:bg-[#8D7B68] hover:text-white text-[#8D7B68] transition-colors shadow-sm"><Printer size={18} /></button>
           <button onClick={onClose} className="p-2 bg-gray-50/90 backdrop-blur-md rounded-full hover:bg-gray-200 text-gray-600 transition-colors shadow-sm"><X size={18} /></button>
         </div>

@@ -506,7 +506,6 @@ const MainApp = ({ user }) => {
   const [orderDiscount, setOrderDiscount] = useState(0);
   const [orderRefundAmount, setOrderRefundAmount] = useState(0);
   const [orderReceiptImage, setOrderReceiptImage] = useState("");
-  const [selectedOrders, setSelectedOrders] = useState([]);
 
   useEffect(() => {
     const path = (coll) => collection(db, "artifacts", appId, "public", "data", coll);
@@ -1248,12 +1247,6 @@ const MainApp = ({ user }) => {
                                  onChange={() => { setSelectedOrders(prev => prev.includes(o.id) ? prev.filter(id => id !== o.id) : [...prev, o.id]) }} 
                                  className="cursor-pointer accent-[#8D7B68] w-4 h-4" />
                         </td> 
-                       <td className="p-4 w-8" onClick={(e) => e.stopPropagation()}>
-                          <input type="checkbox" 
-                                 checked={selectedOrders.includes(o.id)} 
-                                 onChange={() => { setSelectedOrders(prev => prev.includes(o.id) ? prev.filter(id => id !== o.id) : [...prev, o.id]) }} 
-                                 className="cursor-pointer accent-[#8D7B68] w-4 h-4" />
-                        </td>            
                         <td className="p-4 font-bold text-[#8D7B68]">
                           {o.orderNumber}
                           {isLate && <AlertTriangle size={12} className="inline ml-2 text-red-500 animate-pulse" title="En livraison depuis +7 jours" />}
@@ -1783,15 +1776,17 @@ const OrderModal = ({
   const [selectedCustomerId, setSelectedCustomerId] = useState(editingOrder?.customerId || "");
 
   useEffect(() => {
-    let hasChanges = false;
-    const correctedItems = orderItems.map((item) => {
-      if (parseFloat(item.weightG) > 0 && (!item.status || item.status === "En attente" || item.status === "A commander")) {
-        hasChanges = true;
-        return { ...item, status: "Reçu" };
-      }
-      return item;
+    setOrderItems((prevItems) => {
+      let hasChanges = false;
+      const correctedItems = prevItems.map((item) => {
+        if (parseFloat(item.weightG) > 0 && (!item.status || item.status === "En attente" || item.status === "A commander")) {
+          hasChanges = true;
+          return { ...item, status: "Reçu" };
+        }
+        return item;
+      });
+      return hasChanges ? correctedItems : prevItems;
     });
-    if (hasChanges) setOrderItems(correctedItems);
   }, []);
 
   const updateOrderNumber = (selectedDate) => {

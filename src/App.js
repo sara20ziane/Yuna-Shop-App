@@ -966,6 +966,7 @@ const handleSendToZimou = async (order) => {
     };
 
     // 5. Envoi vers le serveur Zimou
+    // 5. Envoi vers le serveur Zimou
     try {
       showToast("Envoi vers Zimou en cours...");
       const response = await fetch("https://zimou.express/api/v3/packages", {
@@ -973,18 +974,29 @@ const handleSendToZimou = async (order) => {
         headers: {
           "Accept": "application/json",
           "Content-Type": "application/json",
-          "Authorization": `Bearer 321237|p12PHZuJJi8OIue389s12MbLmi36LRWt74lKaCRRa7e155a0`
+          "Authorization": `Bearer 321237|p12PHZuJJi8OIue389s12MbLmi36LRWt74lKaCRRa7e155a0` // Garde bien ton vrai Token ici
         },
         body: JSON.stringify(payload)
       });
 
       const result = await response.json();
       
-      if (response.ok) {
+      // On vérifie que la réponse est OK et que Zimou renvoie error: 0
+      if (response.ok && result.error === 0) {
         showToast("Colis ajouté avec succès sur Zimou !");
+        
+        // MAGIE : On met à jour la commande dans Firebase avec le code de suivi !
+        if (order.id) {
+          const orderRef = doc(db, "artifacts", appId, "public", "data", "orders", order.id);
+          await updateDoc(orderRef, {
+            zimouTracking: result.data.tracking_code || "",
+            zimouPrintUrl: result.data.print_url || "",
+            status: "En cours de livraison" // Passe automatiquement le statut en livraison !
+          });
+        }
       } else {
         console.error("Erreur Zimou:", result);
-        showToast(`Erreur Zimou: Vérifie tes logs`, "error");
+        showToast(`Erreur Zimou: ${result.message || "Vérifie les logs"}`, "error");
       }
     } catch (error) {
       console.error("Erreur réseau:", error);

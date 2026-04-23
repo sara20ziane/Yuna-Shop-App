@@ -932,9 +932,9 @@ const handleSendToZimou = async (order) => {
       .join(" + ");
 
     // 4. Le Payload EXACT demandé par Zimou
+    // 4. Le Payload EXACT demandé par Zimou (corrigé)
     const payload = {
       type: "ecommerce",
-      warehouse_id: 0,
       name: articlesDesc || "Articles Yuna's Shop",
       client_last_name: lastName,
       client_first_name: firstName,
@@ -949,9 +949,7 @@ const handleSendToZimou = async (order) => {
       delivery_type: customer.deliveryMode === "stopdesk" ? "stopdesk" : "domicile",
       wilaya: wilayaClean,
       commune: customer.commune || "",
-      office_id: 0, // Laissé à 0, Zimou l'attribue généralement via la commune
-      hub_id: 0,
-      can_be_opened: true, // Autorise l'ouverture du colis
+      can_be_opened: true, 
       observation: "À livrer avec soin - Yuna's Shop",
       returned_product: "",
       weight: totalWeightKg,

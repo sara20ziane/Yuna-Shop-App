@@ -1322,9 +1322,10 @@ const MainApp = ({ user }) => {
                       </div>
                     </div>
                   );
-                })}
-              </div>
+              })}
             </div>
+          </div>
+        )}
 
         {/* GALLERY TAB */}
         {activeTab === "gallery" && (

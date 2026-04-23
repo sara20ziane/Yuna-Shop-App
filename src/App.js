@@ -904,35 +904,28 @@ const MainApp = ({ user }) => {
     setDeleteTarget(null);
   };
 const handleSendToZimou = async (order) => {
-    // 1. Récupérer la cliente
     const customer = customers.find((c) => c.id === order.customerId);
     if (!customer) {
       showToast("Cliente introuvable", "error");
       return;
     }
 
-    // 2. Calculs (Reste à payer et Poids total en Kg)
     const resteToPay = calculateReste(order);
     const totalWeightG = (order.items || []).reduce((sum, item) => sum + (parseFloat(item.weightG) || 0), 0);
     const totalWeightKg = totalWeightG / 1000;
 
-    // 3. Préparer les données textuelles
     const nameParts = customer.name.trim().split(" ");
     const firstName = nameParts[0] || "Inconnue";
-    const lastName = nameParts.slice(1).join(" ") || "Inconnue";
-    const wilayaClean = customer.wilaya ? customer.wilaya.substring(3).trim() : "";
+    const lastName = nameParts.slice(1).join(" ") || "Client";
     
-    let adresseLivraison = customer.deliveryMode === "stopdesk" 
-      ? `Stopdesk : ${customer.stopdeskName}` 
-      : "Livraison à Domicile";
-
+    // On enlève le code wilaya (ex: "16 Alger" devient "Alger")
+    const wilayaClean = customer.wilaya ? customer.wilaya.replace(/[0-9]/g, '').trim() : "";
+    
     const articlesDesc = (order.items || [])
       .filter(i => i.status !== "Retourné Fournisseur")
       .map(i => `${i.name} (${i.color}/${i.size})`)
       .join(" + ");
 
-    // 4. Le Payload EXACT demandé par Zimou
-    // 4. Le Payload EXACT demandé par Zimou (corrigé)
     const payload = {
       type: "ecommerce",
       name: articlesDesc || "Articles Yuna's Shop",
@@ -940,33 +933,24 @@ const handleSendToZimou = async (order) => {
       client_first_name: firstName,
       client_phone: customer.phone,
       client_phone2: customer.phone2 || "",
-      address: adresseLivraison,
+      address: customer.deliveryMode === "stopdesk" ? `Stopdesk: ${customer.stopdeskName}` : "Domicile",
       order_id: order.orderNumber,
       price: resteToPay.toString(),
       free_delivery: resteToPay === 0 ? "1" : "0",
       quantity_items: order.items?.length || 1,
       tracking_partner_company: "",
-      delivery_type: customer.deliveryMode === "stopdesk" ? "2" : "1",
+      // CORRECTION ICI : "desk" pour stopdesk, "home" pour domicile
+      delivery_type: customer.deliveryMode === "stopdesk" ? "desk" : "home",
       wilaya: wilayaClean,
       commune: customer.commune || "",
       can_be_opened: true, 
       observation: "À livrer avec soin - Yuna's Shop",
       returned_product: "",
       weight: totalWeightKg,
-      detail: {
-        is_assured: false,
-        declared_value: 0,
-        has_followed_tag: true
-      },
-      volumetric: {
-        length: 0,
-        width: 0,
-        height: 0
-      }
+      detail: { is_assured: false, declared_value: 0, has_followed_tag: true },
+      volumetric: { length: 0, width: 0, height: 0 }
     };
 
-    // 5. Envoi vers le serveur Zimou
-    // 5. Envoi vers le serveur Zimou
     try {
       showToast("Envoi vers Zimou en cours...");
       const response = await fetch("https://zimou.express/api/v3/packages", {
@@ -974,29 +958,25 @@ const handleSendToZimou = async (order) => {
         headers: {
           "Accept": "application/json",
           "Content-Type": "application/json",
-          "Authorization": `Bearer 321237|p12PHZuJJi8OIue389s12MbLmi36LRWt74lKaCRRa7e155a0` // Garde bien ton vrai Token ici
+          "Authorization": `Bearer 321237|p12PHZuJJi8OIue389s12MbLmi36LRWt74lKaCRRa7e155a0` 
         },
         body: JSON.stringify(payload)
       });
 
       const result = await response.json();
       
-      // On vérifie que la réponse est OK et que Zimou renvoie error: 0
       if (response.ok && result.error === 0) {
-        showToast("Colis ajouté avec succès sur Zimou !");
-        
-        // MAGIE : On met à jour la commande dans Firebase avec le code de suivi !
+        showToast("Colis ajouté avec succès sur Zimou ! ✅");
         if (order.id) {
           const orderRef = doc(db, "artifacts", appId, "public", "data", "orders", order.id);
           await updateDoc(orderRef, {
             zimouTracking: result.data.tracking_code || "",
-            zimouPrintUrl: result.data.print_url || "",
-            status: "En cours de livraison" // Passe automatiquement le statut en livraison !
+            status: "En cours de livraison"
           });
         }
       } else {
-        console.error("Erreur Zimou:", result);
-        showToast(`Erreur Zimou: ${result.message || "Vérifie les logs"}`, "error");
+        console.error("Erreur Zimou détaillée:", result);
+        showToast(`Erreur Zimou: ${result.message || "Vérifie les données"}`, "error");
       }
     } catch (error) {
       console.error("Erreur réseau:", error);

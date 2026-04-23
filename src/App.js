@@ -934,7 +934,7 @@ const handleSendToZimou = async (order) => {
       client_phone: customer.phone,
       client_phone2: customer.phone2 || "",
       address: customer.deliveryMode === "stopdesk" ? `Stopdesk: ${customer.stopdeskName}` : "Domicile",
-      order_id: order.orderNumber,
+      id: order.orderNumber,
       price: resteToPay.toString(),
       free_delivery: resteToPay === 0 ? "1" : "0",
       quantity_items: order.items?.length || 1,

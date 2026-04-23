@@ -975,7 +975,7 @@ const handleSendToZimou = async (order) => {
         headers: {
           "Accept": "application/json",
           "Content-Type": "application/json",
-          "Authorization": `321237|p12PHZuJJi8OIue389s12MbLmi36LRWt74lKaCRRa7e155a0` // REMPLACE CECI PAR TON VRAI TOKEN
+          "Authorization": `Bearer 321237|p12PHZuJJi8OIue389s12MbLmi36LRWt74lKaCRRa7e155a0`
         },
         body: JSON.stringify(payload)
       });

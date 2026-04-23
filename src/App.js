@@ -946,7 +946,7 @@ const handleSendToZimou = async (order) => {
       free_delivery: resteToPay === 0 ? "1" : "0",
       quantity_items: order.items?.length || 1,
       tracking_partner_company: "",
-      delivery_type: customer.deliveryMode === "stopdesk" ? "stopdesk" : "domicile",
+      delivery_type: customer.deliveryMode === "stopdesk" ? "2" : "1",
       wilaya: wilayaClean,
       commune: customer.commune || "",
       can_be_opened: true, 

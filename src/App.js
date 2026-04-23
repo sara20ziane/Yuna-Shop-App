@@ -938,19 +938,25 @@ const handleSendToZimou = async (order) => {
       price: resteToPay.toString(),
       free_delivery: resteToPay === 0 ? "1" : "0",
       quantity_items: order.items?.length || 1,
-      tracking_partner_company: "",
-      // CORRECTION ICI : "desk" pour stopdesk, "home" pour domicile
-      delivery_type: customer.deliveryMode === "stopdesk" ? "desk" : "home",
+      // ON REMPLACE delivery_type PAR delivery_type_id (SANS GUILLEMETS POUR LE CHIFFRE)
+      delivery_type_id: customer.deliveryMode === "stopdesk" ? 2 : 1, 
       wilaya: wilayaClean,
       commune: customer.commune || "",
       can_be_opened: true, 
       observation: "À livrer avec soin - Yuna's Shop",
       returned_product: "",
       weight: totalWeightKg,
-      detail: { is_assured: false, declared_value: 0, has_followed_tag: true },
-      volumetric: { length: 0, width: 0, height: 0 }
+      detail: {
+        is_assured: false,
+        declared_value: 0,
+        has_followed_tag: true
+      },
+      volumetric: {
+        length: 0,
+        width: 0,
+        height: 0
+      }
     };
-
     try {
       showToast("Envoi vers Zimou en cours...");
       const response = await fetch("https://zimou.express/api/v3/packages", {

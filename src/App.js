@@ -1325,7 +1325,7 @@ const MainApp = ({ user }) => {
                   );
                 })}
               </div>
-          </div> {/* <--- AJOUTE CE </div> ICI ! Il ferme la div principale de l'onglet Commandes */}
+          </div> {/
 
         {/* GALLERY TAB */}
         {activeTab === "gallery" && (

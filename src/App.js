@@ -1213,8 +1213,7 @@ const MainApp = ({ user }) => {
                   <Plus size={16} /> Nouvelle Vente
                 </button>
               </div>
-            </div>
-
+           
             {/* Desktop table */}
             <div className="hidden md:block bg-white/80 rounded-[2rem] shadow-sm overflow-auto max-h-[65vh] custom-scrollbar border border-[#E8D5C4]/30 relative">
               <table className="w-full text-left whitespace-nowrap min-w-[800px]">
@@ -1325,7 +1324,7 @@ const MainApp = ({ user }) => {
                   );
                 })}
               </div>
-          </div> {/
+            </div>
 
         {/* GALLERY TAB */}
         {activeTab === "gallery" && (
@@ -1341,7 +1340,7 @@ const MainApp = ({ user }) => {
                  {galleryItems.length} article(s) trouvé(s)
                </span>
             </div>
-
+          
             {galleryItems.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 opacity-50">
                 <ImageIcon size={48} className="text-[#D4B996] mb-4" />

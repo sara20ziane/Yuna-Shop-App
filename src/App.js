@@ -724,6 +724,7 @@ const MainApp = ({ user }) => {
     const fd = new FormData(e.target);
     const data = {
       name: fd.get("name"),
+      profileName: fd.get("profileName") || "", // <-- NOUVELLE LIGNE ICI
       phone: fd.get("phone"),
       phone2: fd.get("phone2") || "",
       platform: fd.get("platform") || "instagram",
@@ -1350,7 +1351,7 @@ const MainApp = ({ user }) => {
             <div className="md:hidden space-y-3">
               {customers.filter((c) => {
                 const searchStr = (globalSearch || customerSearch).toLowerCase();
-                return (c.name.toLowerCase().includes(searchStr) || c.phone.includes(searchStr)) &&
+                return (c.name.toLowerCase().includes(searchStr) || c.phone.includes(searchStr) || (c.profileName && c.profileName.toLowerCase().includes(searchStr))) &&
                   (!filterWilaya || c.wilaya === filterWilaya) &&
                   (!filterCommune || c.commune === filterCommune) &&
                   (!filterDelivery || c.deliveryMode === filterDelivery) &&
@@ -1358,7 +1359,13 @@ const MainApp = ({ user }) => {
               }).map((c) => (
                 <div key={c.id} className="bg-white p-4 rounded-2xl shadow-sm border border-[#E8D5C4]/30 flex flex-col gap-2">
                   <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2"><PlatformIcon type={c.platform} size={14} /><span className="font-bold text-[#8D7B68] text-sm">{c.name}</span></div>
+                    <div className="flex items-center gap-2">
+  <PlatformIcon type={c.platform} size={14} />
+  <div className="flex flex-col">
+    <span className="font-bold text-[#8D7B68] text-sm leading-tight">{c.name}</span>
+    {c.profileName && <span className="text-[10px] text-[#B8A99A] font-medium">{c.profileName}</span>}
+  </div>
+</div>
                     <div className="flex gap-2">
                       <button onClick={() => setShowCustomerHistory(c)} className="text-blue-400 p-1.5 bg-blue-50 rounded-lg"><Clock size={14} /></button>
                       <button onClick={() => { setEditingCustomer(c); setShowAddCustomer(true); }} className="text-[#D4B996] p-1.5 bg-gray-50 rounded-lg"><Edit3 size={14} /></button>
@@ -1392,14 +1399,22 @@ const MainApp = ({ user }) => {
                 <tbody className="divide-y divide-gray-50">
                   {customers.filter((c) => {
                     const searchStr = (globalSearch || customerSearch).toLowerCase();
-                    return (c.name.toLowerCase().includes(searchStr) || c.phone.includes(searchStr)) &&
+                    return (c.name.toLowerCase().includes(searchStr) || c.phone.includes(searchStr) || (c.profileName && c.profileName.toLowerCase().includes(searchStr))) &&
                       (!filterWilaya || c.wilaya === filterWilaya) &&
                       (!filterCommune || c.commune === filterCommune) &&
                       (!filterDelivery || c.deliveryMode === filterDelivery) &&
                       (!filterStopdesk || c.stopdeskName === filterStopdesk);
                   }).map((c) => (
                     <tr key={c.id} className="group hover:bg-[#FAF7F2]/50">
-                      <td className="p-5"><div className="flex items-center gap-3"><PlatformIcon type={c.platform} size={16} /><span className="font-bold text-[#8D7B68] text-sm">{c.name}</span></div></td>
+                      <td className="p-5">
+  <div className="flex items-center gap-3">
+    <PlatformIcon type={c.platform} size={16} />
+    <div className="flex flex-col">
+      <span className="font-bold text-[#8D7B68] text-sm leading-tight">{c.name}</span>
+      {c.profileName && <span className="text-[10px] text-[#B8A99A] font-medium">{c.profileName}</span>}
+    </div>
+  </div>
+</td>
                       <td className="p-5 space-y-1"><div className="flex items-center gap-2 text-[#4A3F35] font-medium"><Phone size={12} className="text-[#D4B996]" /> {c.phone}</div></td>
                       <td className="p-5 space-y-1">
                         <div className="flex items-center gap-2 text-[#4A3F35] font-medium">
@@ -2056,8 +2071,14 @@ const CustomerModal = ({ editingCustomer, handleSaveCustomer, onClose }) => {
 
             {/* Nom */}
             <div className="space-y-1">
-              <label className="text-[9px] uppercase font-bold text-[#B8A99A] ml-1">Nom complet</label>
+              <label className="text-[9px] uppercase font-bold text-[#B8A99A] ml-1">Nom complet (Livraison)</label>
               <input autoFocus name="name" defaultValue={editingCustomer?.name || ""} required className="w-full p-3.5 rounded-xl bg-gray-50 text-sm font-bold text-[#4A3F35] outline-none border border-transparent focus:border-[#E8D5C4]" />
+            </div>
+
+            {/* Pseudo Réseaux Sociaux */}
+            <div className="space-y-1 mt-3">
+              <label className="text-[9px] uppercase font-bold text-[#B8A99A] ml-1">Nom du profil (Emojis, Pseudo exact)</label>
+              <input name="profileName" defaultValue={editingCustomer?.profileName || ""} placeholder="Ex: 𝒴𝓊𝓃𝒶 🌸" className="w-full p-3.5 rounded-xl bg-[#FAF7F2] text-sm font-bold text-[#8D7B68] outline-none border border-transparent focus:border-[#E8D5C4]" />
             </div>
 
             {/* Téléphones */}

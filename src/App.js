@@ -59,6 +59,7 @@ import {
   Loader2,
   UploadCloud,
   Image as ImageIcon
+  Scale
 } from "lucide-react";
 import {
   LineChart,
@@ -435,7 +436,148 @@ function Login() {
     </div>
   );
 }
+// --- COMPOSANT : STATION DE PESÉE RAPIDE ---
+const StationDePesee = ({ orders, showToast }) => {
+  const [poidsSaisi, setPoidsSaisi] = useState("");
+  const inputRef = React.useRef(null);
 
+  // Filtrer tous les articles de toutes les commandes qui n'ont pas de poids
+  const articlesAPeser = React.useMemo(() => {
+    let list = [];
+    orders.forEach((o) => {
+      if (o.status === "Annulée") return;
+      (o.items || []).forEach((item) => {
+        // On récupère les articles sans poids ou avec un poids de 0
+        if (item.status !== "Retourné Fournisseur" && (!item.weightG || parseFloat(item.weightG) === 0)) {
+          list.push({ ...item, orderId: o.id, orderNumber: o.orderNumber, customerName: o.customerName, orderObj: o });
+        }
+      });
+    });
+    // Trier par date (plus anciens en premier pour les traiter en priorité)
+    return list.sort((a, b) => {
+      const timeA = a.orderObj.date?.toMillis ? a.orderObj.date.toMillis() : new Date(a.orderObj.date || 0).getTime();
+      const timeB = b.orderObj.date?.toMillis ? b.orderObj.date.toMillis() : new Date(b.orderObj.date || 0).getTime();
+      return timeA - timeB;
+    });
+  }, [orders]);
+
+  // Forcer le focus sur l'input
+  React.useEffect(() => {
+    if (inputRef.current) inputRef.current.focus();
+  }, [articlesAPeser]); // Se redéclenche quand la liste change
+
+  const handleValiderPoids = async (e, currentItem) => {
+    if (e.key === "Enter" && poidsSaisi !== "") {
+      e.preventDefault();
+      const poidsGrammes = poidsSaisi;
+      
+      // 1. Vider l'input instantanément pour l'UX
+      setPoidsSaisi("");
+
+      // 2. Mettre à jour Firebase
+      try {
+        const orderRef = doc(db, "artifacts", appId, "public", "data", "orders", currentItem.orderId);
+        
+        // On recrée le tableau d'articles avec le nouveau poids pour cet article précis
+        const updatedItems = currentItem.orderObj.items.map(it => {
+          if (it.id === currentItem.id) {
+            // On met le statut à "Reçu" automatiquement puisqu'on le pèse
+            let newStatus = it.status;
+            if (!it.status || it.status === "En attente" || it.status === "A commander") {
+              newStatus = "Reçu";
+            }
+            return { ...it, weightG: poidsGrammes, status: newStatus };
+          }
+          return it;
+        });
+
+        await updateDoc(orderRef, { items: updatedItems });
+        showToast(`Pesée validée : ${poidsGrammes}g pour ${currentItem.customerName}`);
+        
+        // Grâce au onSnapshot dans ton MainApp, Firebase va automatiquement
+        // renvoyer les nouvelles 'orders', et cet article disparaîtra tout seul de la liste !
+      } catch (error) {
+        showToast("Erreur lors de la sauvegarde du poids", "error");
+      }
+    }
+  };
+
+  if (articlesAPeser.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 opacity-60">
+        <Scale size={64} className="text-[#D4B996] mb-4" />
+        <h3 className="text-xl font-serif font-bold text-[#8D7B68]">Tout est pesé !</h3>
+        <p className="text-sm font-bold text-[#B8A99A]">Il n'y a aucun arrivage en attente de pesée.</p>
+      </div>
+    );
+  }
+
+  const currentItem = articlesAPeser[0];
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-6 animate-in zoom-in-95 mt-4 md:mt-10">
+      
+      <div className="flex justify-between items-center px-2">
+        <h3 className="font-serif text-[#8D7B68] text-lg font-bold flex items-center gap-2 uppercase tracking-widest">
+          <Scale size={20} className="text-[#D4B996]"/> Station de Pesée
+        </h3>
+        <span className="bg-[#FAF7F2] border border-[#E8D5C4]/50 text-[#8D7B68] text-[10px] px-3 py-1.5 rounded-full font-black uppercase shadow-sm">
+          Reste : {articlesAPeser.length} article(s)
+        </span>
+      </div>
+
+      <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-xl border border-[#E8D5C4]/30 flex flex-col md:flex-row gap-6 md:gap-8 items-center relative overflow-hidden">
+        
+        {/* Photo de l'article (Optionnelle mais très utile) */}
+        <div className="w-32 h-32 md:w-48 md:h-48 rounded-2xl bg-[#FAF7F2] border border-[#E8D5C4]/50 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
+          {currentItem.itemImage ? (
+            <img src={currentItem.itemImage} alt={currentItem.name} className="w-full h-full object-cover" />
+          ) : (
+            <ImageIcon size={40} className="text-[#E8D5C4]" />
+          )}
+        </div>
+
+        {/* Informations et Saisie */}
+        <div className="flex-1 w-full flex flex-col items-center md:items-start text-center md:text-left">
+          
+          <div className="bg-gray-50 px-3 py-1 rounded-lg text-[10px] font-black uppercase text-gray-400 mb-3 border border-gray-100">
+            CMD: {currentItem.orderNumber}
+          </div>
+          
+          <h2 className="text-2xl md:text-3xl font-serif font-black text-[#8D7B68] leading-tight mb-1">
+            {currentItem.customerName}
+          </h2>
+          
+          <p className="text-sm font-bold text-[#B8A99A] mb-6">
+            {currentItem.name || "Article sans nom"} • {currentItem.category} • {currentItem.size} / {currentItem.color}
+          </p>
+
+          <div className="w-full relative">
+            <label className="text-[10px] uppercase font-bold text-[#D4B996] mb-2 block tracking-widest">
+              Saisir Poids (en Grammes)
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                ref={inputRef}
+                type="number"
+                value={poidsSaisi}
+                onChange={(e) => setPoidsSaisi(e.target.value)}
+                onKeyDown={(e) => handleValiderPoids(e, currentItem)}
+                placeholder="Ex: 250"
+                className="w-full md:w-48 p-4 md:p-5 text-2xl font-black text-center md:text-left text-[#4A3F35] bg-[#FAF7F2] rounded-2xl outline-none shadow-sm border-2 border-transparent focus:border-[#D4B996] transition-all"
+              />
+              <span className="text-[#B8A99A] font-black text-xl hidden md:block">g</span>
+            </div>
+            <p className="text-[9px] text-gray-400 uppercase font-bold mt-3">
+              Appuyez sur <span className="text-gray-600 border border-gray-200 px-1.5 py-0.5 rounded shadow-sm">ENTRÉE</span> pour valider
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+};
 // --- MAIN APP ---
 const MainApp = ({ user }) => {
   const [globalSearch, setGlobalSearch] = useState("");
@@ -1008,6 +1150,7 @@ const MainApp = ({ user }) => {
         <nav className="flex-1 space-y-2 mt-4">
           <SidebarItem active={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} icon={LayoutDashboard} label="Tableau de bord" />
           <SidebarItem active={activeTab === "orders"} onClick={() => setActiveTab("orders")} icon={Package} label="Commandes" badge={lateDeliveries.length} />
+          <SidebarItem active={activeTab === "pesee"} onClick={() => setActiveTab("pesee")} icon={Scale} label="Station Pesée" />
           <SidebarItem active={activeTab === "gallery"} onClick={() => setActiveTab("gallery")} icon={ImageIcon} label="Galerie" />
           <SidebarItem active={activeTab === "customers"} onClick={() => setActiveTab("customers")} icon={Users} label="Base Clientes" />
           <SidebarItem active={activeTab === "arrivages"} onClick={() => setActiveTab("arrivages")} icon={Globe} label="Arrivages (Logistique)" />
@@ -1329,7 +1472,10 @@ const MainApp = ({ user }) => {
             </div>
           </div>
         )}
-
+{/* ONGLET STATION DE PESÉE */}
+        {activeTab === "pesee" && (
+          <StationDePesee orders={orders} showToast={showToast} />
+        )}
         {/* GALLERY TAB */}
         {activeTab === "gallery" && (
           <div className="space-y-4 md:space-y-6 animate-in slide-in-from-bottom-4">
@@ -1655,6 +1801,7 @@ const MainApp = ({ user }) => {
         {[
           { tab: "dashboard", icon: LayoutDashboard, label: "Bord" },
           { tab: "orders", icon: Package, label: "Ventes" },
+          { tab: "pesee", icon: Scale, label: "Pesée" },
           { tab: "gallery", icon: ImageIcon, label: "Galerie" }, 
           { tab: "customers", icon: Users, label: "Clientes" },
           { tab: "arrivages", icon: Globe, label: "Arrivages" },

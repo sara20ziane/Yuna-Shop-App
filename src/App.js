@@ -1312,7 +1312,7 @@ const MainApp = ({ user }) => {
         {activeTab === "gallery" && (
           <div className="space-y-4 md:space-y-6 animate-in slide-in-from-bottom-4">
             
-            {/* NOUVEL EN-TÊTE AVEC RECHERCHE (Étape C) */}
+            {/* NOUVEL EN-TÊTE AVEC RECHERCHE */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#FAF7F2]/80 p-4 rounded-2xl md:rounded-[2rem] border border-[#E8D5C4]/30 shadow-sm">
                <div className="flex items-center gap-3 w-full md:w-auto">
                  <div className="p-2 bg-white rounded-full shadow-sm shrink-0">
@@ -1336,15 +1336,19 @@ const MainApp = ({ user }) => {
                </div>
             </div>
 
-            {galleryItems.length === 0 ? (
+            {/* ICI : Remplacement de galleryItems par filteredGalleryItems */}
+            {filteredGalleryItems.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 opacity-50">
                 <ImageIcon size={48} className="text-[#D4B996] mb-4" />
-                <p className="text-sm font-bold text-[#8D7B68]">Aucune photo pour ce mois.</p>
-                <p className="text-xs text-[#B8A99A] mt-1">Ajoute des photos aux articles dans tes commandes.</p>
+                <p className="text-sm font-bold text-[#8D7B68]">
+                  {gallerySearch ? "Aucun résultat pour cette recherche." : "Aucune photo pour ce mois."}
+                </p>
+                {!gallerySearch && <p className="text-xs text-[#B8A99A] mt-1">Ajoute des photos aux articles dans tes commandes.</p>}
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 pb-4">
-                {galleryItems.map((item, idx) => (
+                {/* ICI AUSSI : Remplacement de galleryItems.map par filteredGalleryItems.map */}
+                {filteredGalleryItems.map((item, idx) => (
                   <div 
                     key={`${item.id}-${idx}`} 
                     onClick={() => openOrderForEdit(item.orderObj)}

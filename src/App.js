@@ -610,7 +610,21 @@ const MainApp = ({ user }) => {
   const filteredOrders = useMemo(() => {
     return orders
       .filter((o) => {
-        // ... (Garde ton code de filtre actuel intact jusqu'au .sort)
+        const d = o.date?.toDate ? o.date.toDate() : new Date(o.date);
+        const isSameMonth =
+          d.getFullYear() === filterYear && (filterMonth === 0 || d.getMonth() + 1 === filterMonth);
+        const searchLower = (globalSearch || orderSearch).toLowerCase();
+        const matchBasic =
+          (o.orderNumber || "").toLowerCase().includes(searchLower) ||
+          (o.customerName || "").toLowerCase().includes(searchLower);
+        const matchItems = (o.items || []).some(
+          (item) =>
+            (item.name || "").toLowerCase().includes(searchLower) ||
+            (item.color || "").toLowerCase().includes(searchLower) ||
+            (item.size || "").toLowerCase().includes(searchLower) ||
+            (item.category || "").toLowerCase().includes(searchLower)
+        );
+        const matchSearch = matchBasic || matchItems;
         const matchStatus = !orderStatusFilter || o.status === orderStatusFilter;
         return isSameMonth && matchSearch && matchStatus;
       })
@@ -622,15 +636,15 @@ const MainApp = ({ user }) => {
         const totalB = (parseFloat(b.totalVente) || 0) + (parseFloat(b.shippingNational) || 0);
 
         switch (orderSortBy) {
-          case "dateAsc": return timeA - timeB; // Plus ancien
-          case "priceDesc": return totalB - totalA; // Montant + élevé
-          case "priceAsc": return totalA - totalB; // Montant + bas
-          case "resteDesc": return calculateReste(b) - calculateReste(a); // Reste à payer + élevé
+          case "dateAsc": return timeA - timeB; 
+          case "priceDesc": return totalB - totalA; 
+          case "priceAsc": return totalA - totalB; 
+          case "resteDesc": return calculateReste(b) - calculateReste(a); 
           case "dateDesc":
-          default: return timeB - timeA; // Plus récent (Défaut)
+          default: return timeB - timeA; 
         }
       });
-  }, [orders, filterYear, filterMonth, orderSearch, globalSearch, orderStatusFilter, orderSortBy]); // <== Ajout de orderSortBy
+  }, [orders, filterYear, filterMonth, orderSearch, globalSearch, orderStatusFilter, orderSortBy]);
 
   const filteredArrivages = useMemo(() => {
     return arrivages

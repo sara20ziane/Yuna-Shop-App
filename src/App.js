@@ -447,6 +447,7 @@ const MainApp = ({ user }) => {
   const [orderSearch, setOrderSearch] = useState("");
   const [orderStatusFilter, setOrderStatusFilter] = useState("");
   const [orderSortBy, setOrderSortBy] = useState("dateDesc"); // Par défaut : plus récent
+  const [orderNumberFilter, setOrderNumberFilter] = useState("");
   const [activeTab, setActiveTab] = useState("dashboard");
   const [toast, setToast] = useState(null);
   const [gallerySearch, setGallerySearch] = useState("");
@@ -626,7 +627,11 @@ const MainApp = ({ user }) => {
         );
         const matchSearch = matchBasic || matchItems;
         const matchStatus = !orderStatusFilter || o.status === orderStatusFilter;
-        return isSameMonth && matchSearch && matchStatus;
+        
+        // NOUVEAU : Le filtre strict sur le numéro de commande
+        const matchOrderNumber = !orderNumberFilter || (o.orderNumber || "").toLowerCase().includes(orderNumberFilter.toLowerCase());
+
+        return isSameMonth && matchSearch && matchStatus && matchOrderNumber;
       })
       .sort((a, b) => {
         const timeA = a.date?.toMillis ? a.date.toMillis() : new Date(a.date || 0).getTime();
@@ -644,7 +649,8 @@ const MainApp = ({ user }) => {
           default: return timeB - timeA; 
         }
       });
-  }, [orders, filterYear, filterMonth, orderSearch, globalSearch, orderStatusFilter, orderSortBy]);
+  // ATTENTION : J'ai ajouté orderNumberFilter à la fin de cette liste entre les crochets 👇
+  }, [orders, filterYear, filterMonth, orderSearch, globalSearch, orderStatusFilter, orderSortBy, orderNumberFilter]);
 
   const filteredArrivages = useMemo(() => {
     return arrivages
@@ -1157,14 +1163,30 @@ const MainApp = ({ user }) => {
         {/* ORDERS TAB */}
         {activeTab === "orders" && (
           <div className="space-y-3 md:space-y-6 animate-in slide-in-from-bottom-4">
+            
+            {/* BARRE DE RECHERCHE ET FILTRES */}
             <div className="flex flex-col md:flex-row gap-3">
+              
+              {/* Recherche Globale */}
               <div className="relative flex-1">
                 <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#B8A99A]" />
-                <input type="text" placeholder="Chercher (n° commande, nom, article)..." value={orderSearch} onChange={(e) => setOrderSearch(e.target.value)} className="w-full pl-12 pr-4 py-3.5 md:py-2.5 bg-white/80 rounded-2xl md:rounded-full text-sm font-bold shadow-sm outline-none text-[#8D7B68] border border-[#E8D5C4]/30" />
+                <input type="text" placeholder="Chercher (nom, article)..." value={orderSearch} onChange={(e) => setOrderSearch(e.target.value)} className="w-full pl-12 pr-4 py-3.5 md:py-2.5 bg-white/80 rounded-2xl md:rounded-full text-sm font-bold shadow-sm outline-none text-[#8D7B68] border border-[#E8D5C4]/30" />
+              </div>
+
+              {/* NOUVEAU : Champ dédié au Numéro de Commande */}
+              <div className="relative w-full md:w-36 shrink-0">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#B8A99A] font-black text-[10px] uppercase">N°</span>
+                <input 
+                  type="text" 
+                  placeholder="Ex: 2604-001" 
+                  value={orderNumberFilter} 
+                  onChange={(e) => setOrderNumberFilter(e.target.value)} 
+                  className="w-full pl-9 pr-4 py-3.5 md:py-2.5 bg-white/80 rounded-2xl md:rounded-full text-sm font-bold shadow-sm outline-none text-[#8D7B68] border border-[#E8D5C4]/30" 
+                />
               </div>
               
               {/* FILTRE PAR STATUT (existant) */}
-              <div className="relative w-full md:w-56">
+              <div className="relative w-full md:w-56 shrink-0">
                 <Filter size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#B8A99A]" />
                 <select value={orderStatusFilter} onChange={(e) => setOrderStatusFilter(e.target.value)} className="w-full pl-12 pr-4 py-3.5 md:py-2.5 bg-white/80 rounded-2xl md:rounded-full text-sm font-bold shadow-sm outline-none text-[#8D7B68] border border-[#E8D5C4]/30 appearance-none">
                   <option value="">Tous les statuts</option>
@@ -1172,8 +1194,8 @@ const MainApp = ({ user }) => {
                 </select>
               </div>
 
-              {/* NOUVEAU : TRI PAR ORDRE (Étape C) */}
-              <div className="relative w-full md:w-56">
+              {/* TRI PAR ORDRE */}
+              <div className="relative w-full md:w-56 shrink-0">
                 <select 
                   value={orderSortBy} 
                   onChange={(e) => setOrderSortBy(e.target.value)} 
@@ -1183,7 +1205,7 @@ const MainApp = ({ user }) => {
                   <option value="dateAsc">📅 Plus anciennes d'abord</option>
                   <option value="priceDesc">💰 Montant: + Élevé</option>
                   <option value="priceAsc">💰 Montant: + Bas</option>
-                  <option value="resteDesc">⚠️ Reste à payer d'abord</option>
+                  <option value="resteDesc">⚠️ Reste à payer</option>
                 </select>
               </div>
 

@@ -437,23 +437,25 @@ function Login() {
   );
 }
 // --- COMPOSANT : STATION DE PESÉE RAPIDE ---
-const StationDePesee = ({ orders, showToast }) => {
+const StationDePesee = ({ orders, arrivages, showToast, onNewArrivage }) => {
   const [poidsSaisi, setPoidsSaisi] = useState("");
+  const [arrivageActif, setArrivageActif] = useState(""); 
+  const [indexActuel, setIndexActuel] = useState(0);
   const inputRef = React.useRef(null);
 
-  // Filtrer tous les articles de toutes les commandes qui n'ont pas de poids
+  // 1. Récupérer TOUS les articles en attente de pesée (peu importe l'arrivage)
   const articlesAPeser = React.useMemo(() => {
     let list = [];
     orders.forEach((o) => {
       if (o.status === "Annulée") return;
       (o.items || []).forEach((item) => {
-        // On récupère les articles sans poids ou avec un poids de 0
+        // On récupère les articles sans poids ou à 0
         if (item.status !== "Retourné Fournisseur" && (!item.weightG || parseFloat(item.weightG) === 0)) {
           list.push({ ...item, orderId: o.id, orderNumber: o.orderNumber, customerName: o.customerName, orderObj: o });
         }
       });
     });
-    // Trier par date (plus anciens en premier pour les traiter en priorité)
+    // Trier par date de commande (les plus anciens d'abord)
     return list.sort((a, b) => {
       const timeA = a.orderObj.date?.toMillis ? a.orderObj.date.toMillis() : new Date(a.orderObj.date || 0).getTime();
       const timeB = b.orderObj.date?.toMillis ? b.orderObj.date.toMillis() : new Date(b.orderObj.date || 0).getTime();
@@ -461,120 +463,212 @@ const StationDePesee = ({ orders, showToast }) => {
     });
   }, [orders]);
 
+  // Sécurité pour l'index si on pèse un article et que la liste rétrécit
+  React.useEffect(() => {
+    if (indexActuel >= articlesAPeser.length) setIndexActuel(0);
+  }, [articlesAPeser.length, indexActuel]);
+
   // Forcer le focus sur l'input
   React.useEffect(() => {
     if (inputRef.current) inputRef.current.focus();
-  }, [articlesAPeser]); // Se redéclenche quand la liste change
+  }, [indexActuel, articlesAPeser, arrivageActif]);
 
   const handleValiderPoids = async (e, currentItem) => {
     if (e.key === "Enter" && poidsSaisi !== "") {
       e.preventDefault();
+
+      // SÉCURITÉ : On oblige à ouvrir un carton (Arrivage) avant de peser !
+      if (!arrivageActif) {
+        showToast("⚠️ Ouvre un Arrivage en haut avant de commencer à peser !", "error");
+        return;
+      }
+
       const poidsGrammes = poidsSaisi;
-      
-      // 1. Vider l'input instantanément pour l'UX
       setPoidsSaisi("");
 
-      // 2. Mettre à jour Firebase
       try {
         const orderRef = doc(db, "artifacts", appId, "public", "data", "orders", currentItem.orderId);
         
-        // On recrée le tableau d'articles avec le nouveau poids pour cet article précis
         const updatedItems = currentItem.orderObj.items.map(it => {
           if (it.id === currentItem.id) {
-            // On met le statut à "Reçu" automatiquement puisqu'on le pèse
             let newStatus = it.status;
             if (!it.status || it.status === "En attente" || it.status === "A commander") {
               newStatus = "Reçu";
             }
-            return { ...it, weightG: poidsGrammes, status: newStatus };
+            // L'ARTICLE EST ASSIGNÉ AU CARTON OUVERT INSTANTANÉMENT
+            return { 
+              ...it, 
+              weightG: poidsGrammes, 
+              status: newStatus, 
+              arrivageId: arrivageActif 
+            };
           }
           return it;
         });
 
         await updateDoc(orderRef, { items: updatedItems });
-        showToast(`Pesée validée : ${poidsGrammes}g pour ${currentItem.customerName}`);
-        
-        // Grâce au onSnapshot dans ton MainApp, Firebase va automatiquement
-        // renvoyer les nouvelles 'orders', et cet article disparaîtra tout seul de la liste !
+        showToast(`Pesée validée et assignée au carton ! (${poidsGrammes}g)`);
       } catch (error) {
-        showToast("Erreur lors de la sauvegarde du poids", "error");
+        showToast("Erreur lors de la sauvegarde", "error");
       }
     }
   };
 
-  if (articlesAPeser.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 opacity-60">
-        <Scale size={64} className="text-[#D4B996] mb-4" />
-        <h3 className="text-xl font-serif font-bold text-[#8D7B68]">Tout est pesé !</h3>
-        <p className="text-sm font-bold text-[#B8A99A]">Il n'y a aucun arrivage en attente de pesée.</p>
-      </div>
-    );
-  }
-
-  const currentItem = articlesAPeser[0];
+  const currentItem = articlesAPeser[indexActuel];
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 animate-in zoom-in-95 mt-4 md:mt-10">
+    <div className="max-w-5xl mx-auto space-y-4 animate-in zoom-in-95 mt-2 md:mt-4">
       
-      <div className="flex justify-between items-center px-2">
-        <h3 className="font-serif text-[#8D7B68] text-lg font-bold flex items-center gap-2 uppercase tracking-widest">
-          <Scale size={20} className="text-[#D4B996]"/> Station de Pesée
-        </h3>
-        <span className="bg-[#FAF7F2] border border-[#E8D5C4]/50 text-[#8D7B68] text-[10px] px-3 py-1.5 rounded-full font-black uppercase shadow-sm">
-          Reste : {articlesAPeser.length} article(s)
-        </span>
-      </div>
-
-      <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-xl border border-[#E8D5C4]/30 flex flex-col md:flex-row gap-6 md:gap-8 items-center relative overflow-hidden">
+      {/* EN-TÊTE : Assignation Arrivage */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 px-2 bg-white p-4 rounded-[1.5rem] border border-[#E8D5C4]/40 shadow-sm">
+        <div className="flex flex-col">
+          <h3 className="font-serif text-[#8D7B68] text-sm md:text-lg font-bold flex items-center gap-2 uppercase tracking-widest shrink-0">
+            <Scale size={20} className="text-[#D4B996]"/> Station Pesée
+          </h3>
+          <p className="text-[9px] font-bold text-gray-400 mt-1">Étape 1 : Choisis le carton que tu vas vider</p>
+        </div>
         
-        {/* Photo de l'article (Optionnelle mais très utile) */}
-        <div className="w-32 h-32 md:w-48 md:h-48 rounded-2xl bg-[#FAF7F2] border border-[#E8D5C4]/50 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
-          {currentItem.itemImage ? (
-            <img src={currentItem.itemImage} alt={currentItem.name} className="w-full h-full object-cover" />
-          ) : (
-            <ImageIcon size={40} className="text-[#E8D5C4]" />
-          )}
-        </div>
-
-        {/* Informations et Saisie */}
-        <div className="flex-1 w-full flex flex-col items-center md:items-start text-center md:text-left">
+        <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto flex-1 md:justify-end">
           
-          <div className="bg-gray-50 px-3 py-1 rounded-lg text-[10px] font-black uppercase text-gray-400 mb-3 border border-gray-100">
-            CMD: {currentItem.orderNumber}
-          </div>
-          
-          <h2 className="text-2xl md:text-3xl font-serif font-black text-[#8D7B68] leading-tight mb-1">
-            {currentItem.customerName}
-          </h2>
-          
-          <p className="text-sm font-bold text-[#B8A99A] mb-6">
-            {currentItem.name || "Article sans nom"} • {currentItem.category} • {currentItem.size} / {currentItem.color}
-          </p>
-
-          <div className="w-full relative">
-            <label className="text-[10px] uppercase font-bold text-[#D4B996] mb-2 block tracking-widest">
-              Saisir Poids (en Grammes)
-            </label>
-            <div className="flex items-center gap-3">
-              <input
-                ref={inputRef}
-                type="number"
-                value={poidsSaisi}
-                onChange={(e) => setPoidsSaisi(e.target.value)}
-                onKeyDown={(e) => handleValiderPoids(e, currentItem)}
-                placeholder="Ex: 250"
-                className="w-full md:w-48 p-4 md:p-5 text-2xl font-black text-center md:text-left text-[#4A3F35] bg-[#FAF7F2] rounded-2xl outline-none shadow-sm border-2 border-transparent focus:border-[#D4B996] transition-all"
-              />
-              <span className="text-[#B8A99A] font-black text-xl hidden md:block">g</span>
-            </div>
-            <p className="text-[9px] text-gray-400 uppercase font-bold mt-3">
-              Appuyez sur <span className="text-gray-600 border border-gray-200 px-1.5 py-0.5 rounded shadow-sm">ENTRÉE</span> pour valider
-            </p>
+          {/* SÉLECTEUR D'ARRIVAGE (CRITIQUE) */}
+          <div className="relative w-full md:w-72 flex gap-2">
+            <select 
+              value={arrivageActif} 
+              onChange={(e) => setArrivageActif(e.target.value)}
+              className={`flex-1 p-3 rounded-xl text-xs font-bold outline-none shadow-sm appearance-none transition-colors ${!arrivageActif ? "bg-red-50 text-red-500 border border-red-200 animate-pulse" : "bg-[#8D7B68] text-white border-transparent"}`}
+            >
+              <option value="">Sélectionner l'arrivage en cours...</option>
+              {/* On trie pour avoir les plus récents en premier */}
+              {[...(arrivages || [])].sort((a,b) => new Date(b.date) - new Date(a.date)).map(a => (
+                <option key={a.id} value={a.id}>📦 Arrivage #{a.number} ({a.date})</option>
+              ))}
+            </select>
+            
+            <button 
+              onClick={onNewArrivage}
+              className="p-3 bg-[#FAF7F2] text-[#8D7B68] border border-[#E8D5C4] rounded-xl shadow-sm hover:scale-105 transition-transform shrink-0"
+              title="Créer le nouvel arrivage du jour"
+            >
+              <Plus size={16} />
+            </button>
           </div>
 
+          <span className="bg-[#FAF7F2] border border-[#E8D5C4]/50 text-[#8D7B68] text-[10px] px-4 py-3 rounded-xl font-black uppercase shadow-sm shrink-0 hidden md:block">
+            En attente : {articlesAPeser.length}
+          </span>
         </div>
       </div>
+
+      {articlesAPeser.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 opacity-60 bg-white rounded-[2rem] border border-[#E8D5C4]/30 shadow-sm mt-4">
+          <Scale size={64} className="text-[#D4B996] mb-4" />
+          <h3 className="text-xl font-serif font-bold text-[#8D7B68]">Tout est pesé !</h3>
+          <p className="text-sm font-bold text-[#B8A99A]">Il n'y a aucun article en attente dans tes commandes.</p>
+        </div>
+      ) : (
+        <>
+          {/* BANDEAU DE NAVIGATION DES ARTICLES */}
+          <div className="flex overflow-x-auto gap-3 py-2 px-1 custom-scrollbar snap-x mt-2">
+            {articlesAPeser.map((art, idx) => (
+              <div 
+                key={art.id} 
+                onClick={() => setIndexActuel(idx)}
+                className={`snap-start shrink-0 flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all border ${indexActuel === idx ? "bg-white border-[#D4B996] shadow-md scale-105" : "bg-white/50 border-transparent hover:bg-white opacity-60 hover:opacity-100"}`}
+                style={{ width: "220px" }}
+              >
+                <div className="w-12 h-12 rounded-lg bg-[#FAF7F2] overflow-hidden flex items-center justify-center shrink-0 border border-[#E8D5C4]/30">
+                  {art.itemImage ? <img src={art.itemImage} className="w-full h-full object-cover" /> : <ImageIcon size={16} className="text-[#E8D5C4]"/>}
+                </div>
+                <div className="flex flex-col overflow-hidden w-full">
+                  <span className="text-[10px] font-black text-[#8D7B68] truncate">{art.customerName}</span>
+                  <span className="text-[9px] font-bold text-[#B8A99A] truncate">{art.orderNumber}</span>
+                  <span className="text-[8px] text-gray-400 truncate mt-0.5">{art.name || "Sans nom"}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* CARTE PRINCIPALE DE PESÉE */}
+          {currentItem && (
+            <div className={`p-6 md:p-8 rounded-[2rem] shadow-xl border flex flex-col md:flex-row gap-6 md:gap-8 items-center relative overflow-hidden transition-colors ${arrivageActif ? "bg-white border-[#E8D5C4]/30" : "bg-red-50/20 border-red-200"}`}>
+              
+              {/* Bouton Précédent */}
+              <div className="hidden md:flex flex-col items-center gap-4">
+                 <button 
+                   onClick={() => setIndexActuel(prev => Math.max(0, prev - 1))}
+                   disabled={indexActuel === 0}
+                   className="p-3 bg-[#FAF7F2] rounded-full text-[#8D7B68] hover:bg-[#E8D5C4] disabled:opacity-30 transition-all shadow-sm"
+                 >
+                   <span className="font-black text-sm">←</span>
+                 </button>
+              </div>
+
+              {/* Photo */}
+              <div className="w-32 h-32 md:w-56 md:h-56 rounded-2xl bg-[#FAF7F2] border border-[#E8D5C4]/50 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
+                {currentItem.itemImage ? (
+                  <img src={currentItem.itemImage} alt={currentItem.name} className="w-full h-full object-cover" />
+                ) : (
+                  <ImageIcon size={48} className="text-[#E8D5C4]" />
+                )}
+              </div>
+
+              {/* Informations et Saisie */}
+              <div className="flex-1 w-full flex flex-col items-center md:items-start text-center md:text-left">
+                <div className="flex flex-wrap justify-center md:justify-start gap-2 mb-3">
+                  <span className="bg-gray-50 px-3 py-1 rounded-lg text-[10px] font-black uppercase text-gray-400 border border-gray-100">
+                    CMD: {currentItem.orderNumber}
+                  </span>
+                  {currentItem.arrivageId && currentItem.arrivageId !== arrivageActif && (
+                    <span className="bg-orange-50 text-orange-500 px-3 py-1 rounded-lg text-[10px] font-black uppercase border border-orange-100">
+                      Était prévu dans un autre arrivage
+                    </span>
+                  )}
+                </div>
+                
+                <h2 className="text-2xl md:text-4xl font-serif font-black text-[#8D7B68] leading-tight mb-2">
+                  {currentItem.customerName}
+                </h2>
+                
+                <p className="text-sm font-bold text-[#B8A99A] mb-6">
+                  {currentItem.name || "Article sans nom"} • {currentItem.category} • {currentItem.size} / {currentItem.color}
+                </p>
+
+                <div className={`w-full relative p-4 rounded-2xl transition-colors ${arrivageActif ? "bg-[#FAF7F2]/50 border border-[#E8D5C4]/40" : "bg-red-50 border border-red-200"}`}>
+                  <label className={`text-[10px] uppercase font-bold mb-2 block tracking-widest ${arrivageActif ? "text-[#D4B996]" : "text-red-500"}`}>
+                    {arrivageActif ? "Saisir Poids (en Grammes)" : "STOP : SÉLECTIONNEZ LE CARTON EN HAUT"}
+                  </label>
+                  <div className="flex items-center gap-3 justify-center md:justify-start">
+                    <input
+                      ref={inputRef}
+                      type="number"
+                      value={poidsSaisi}
+                      onChange={(e) => setPoidsSaisi(e.target.value)}
+                      onKeyDown={(e) => handleValiderPoids(e, currentItem)}
+                      disabled={!arrivageActif}
+                      placeholder="Ex: 250"
+                      className="w-full md:w-48 p-4 md:p-5 text-2xl font-black text-center md:text-left text-[#4A3F35] bg-white rounded-2xl outline-none shadow-md border-2 border-transparent focus:border-[#D4B996] transition-all disabled:opacity-50"
+                    />
+                    <span className="text-[#B8A99A] font-black text-2xl hidden md:block">g</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bouton Suivant / Passer */}
+              <div className="md:flex flex-col items-center gap-2 mt-4 md:mt-0 w-full md:w-auto">
+                 <button 
+                   onClick={() => setIndexActuel(prev => prev < articlesAPeser.length - 1 ? prev + 1 : 0)}
+                   className="w-full md:w-auto px-4 py-3 md:p-4 bg-white border border-[#E8D5C4] shadow-sm rounded-xl md:rounded-full text-[#8D7B68] hover:bg-[#FAF7F2] transition-all flex items-center justify-center gap-2"
+                 >
+                   <span className="text-[10px] uppercase font-bold md:hidden">Article suivant</span>
+                   <span className="font-black text-sm hidden md:block">→</span>
+                 </button>
+                 <p className="text-[8px] text-gray-400 uppercase font-bold hidden md:block mt-2">Passer</p>
+              </div>
+
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };
@@ -1474,7 +1568,21 @@ const MainApp = ({ user }) => {
         )}
 {/* ONGLET STATION DE PESÉE */}
         {activeTab === "pesee" && (
-          <StationDePesee orders={orders} showToast={showToast} />
+          <StationDePesee 
+            orders={orders} 
+            arrivages={arrivages} 
+            showToast={showToast}
+            onNewArrivage={() => {
+              const today = new Date().toISOString().split("T")[0];
+              const prefix = `A${today.slice(2, 4)}${today.slice(5, 7)}-`;
+              const monthArrivages = arrivages.filter((a) => a.number?.startsWith(prefix));
+              const nextNum = monthArrivages.length === 0 ? 1 : Math.max(...monthArrivages.map((a) => parseInt(a.number.split("-")[1]) || 0)) + 1;
+              setArrivageNumber(`${prefix}${String(nextNum).padStart(2, "0")}`);
+              setArrivageDate(today);
+              setEditingArrivage(null);
+              setShowAddArrivage(true);
+            }}
+          />
         )}
         {/* GALLERY TAB */}
         {activeTab === "gallery" && (

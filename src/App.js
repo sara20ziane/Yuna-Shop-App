@@ -58,7 +58,7 @@ import {
   Printer,
   Loader2,
   UploadCloud,
-  Image as ImageIcon
+  Image as ImageIcon,
   Scale
 } from "lucide-react";
 import {

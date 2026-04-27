@@ -744,7 +744,6 @@ const MainApp = ({ user }) => {
   const [orderDiscount, setOrderDiscount] = useState(0);
   const [orderRefundAmount, setOrderRefundAmount] = useState(0);
   const [orderReceiptImage, setOrderReceiptImage] = useState("");
-  const [gallerySearch, setGallerySearch] = useState("");
   
   // --- NOUVEAUX ÉTATS POUR LA SÉLECTION GALERIE ---
   const [isGallerySelectionMode, setIsGallerySelectionMode] = useState(false);

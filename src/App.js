@@ -1752,8 +1752,10 @@ const MainApp = ({ user }) => {
                 );
               })}
             </div>
+        )}
+
 {/* ONGLET STATION DE PESÉE */}
-        {activeTab === "pesee" && (
+        {activeTab === "pesee" && (
           <StationDePesee 
             orders={orders} 
             arrivages={arrivages} 

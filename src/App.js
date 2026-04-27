@@ -744,6 +744,50 @@ const MainApp = ({ user }) => {
   const [orderDiscount, setOrderDiscount] = useState(0);
   const [orderRefundAmount, setOrderRefundAmount] = useState(0);
   const [orderReceiptImage, setOrderReceiptImage] = useState("");
+  const [gallerySearch, setGallerySearch] = useState("");
+  
+  // --- NOUVEAUX ÉTATS POUR LA SÉLECTION GALERIE ---
+  const [isGallerySelectionMode, setIsGallerySelectionMode] = useState(false);
+  const [selectedGalleryItems, setSelectedGalleryItems] = useState([]);
+
+  // --- FONCTION DE SUPPRESSION MULTIPLE GALERIE ---
+  const handleDeleteSelectedImages = async () => {
+    if (selectedGalleryItems.length === 0) return;
+    
+    try {
+      // Regrouper les modifications par commande (orderId) pour minimiser les requêtes
+      const updatesByOrder = {};
+      
+      selectedGalleryItems.forEach(selected => {
+        if (!updatesByOrder[selected.orderId]) {
+          const order = orders.find(o => o.id === selected.orderId);
+          if (order) updatesByOrder[selected.orderId] = { ...order };
+        }
+        
+        if (updatesByOrder[selected.orderId]) {
+          updatesByOrder[selected.orderId].items = updatesByOrder[selected.orderId].items.map(it => {
+            if (it.id === selected.itemId) {
+              return { ...it, itemImage: "" }; // On vide l'URL de l'image
+            }
+            return it;
+          });
+        }
+      });
+
+      // Exécuter la mise à jour pour chaque commande impactée
+      for (const orderId in updatesByOrder) {
+        const orderRef = doc(db, "artifacts", appId, "public", "data", "orders", orderId);
+        await updateDoc(orderRef, { items: updatesByOrder[orderId].items });
+      }
+
+      showToast(`${selectedGalleryItems.length} photo(s) retirée(s) avec succès`);
+      setIsGallerySelectionMode(false);
+      setSelectedGalleryItems([]);
+    } catch (error) {
+      console.error(error);
+      showToast("Erreur lors de la suppression des photos", "error");
+    }
+  };
 
   useEffect(() => {
     const path = (coll) => collection(db, "artifacts", appId, "public", "data", coll);
@@ -1588,7 +1632,7 @@ const MainApp = ({ user }) => {
         {activeTab === "gallery" && (
           <div className="space-y-4 md:space-y-6 animate-in slide-in-from-bottom-4">
             
-            {/* NOUVEL EN-TÊTE AVEC RECHERCHE */}
+            {/* EN-TÊTE AVEC RECHERCHE ET BOUTONS DE SÉLECTION */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#FAF7F2]/80 p-4 rounded-2xl md:rounded-[2rem] border border-[#E8D5C4]/30 shadow-sm">
                <div className="flex items-center gap-3 w-full md:w-auto">
                  <div className="p-2 bg-white rounded-full shadow-sm shrink-0">
@@ -1600,19 +1644,50 @@ const MainApp = ({ user }) => {
                  </span>
                </div>
                
-               <div className="relative w-full md:w-72">
-                 <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#B8A99A]" />
-                 <input 
-                   type="text" 
-                   placeholder="Chercher cliente, article, N°..." 
-                   value={gallerySearch} 
-                   onChange={(e) => setGallerySearch(e.target.value)} 
-                   className="w-full pl-10 pr-4 py-2.5 bg-white rounded-full text-xs font-bold shadow-sm outline-none text-[#8D7B68] border border-[#E8D5C4]/40 focus:border-[#D4B996]" 
-                 />
+               <div className="flex flex-col md:flex-row items-center gap-2 w-full md:w-auto">
+                 
+                 {/* --- BOUTONS MODE SÉLECTION --- */}
+                 {isGallerySelectionMode ? (
+                   <div className="flex gap-2 w-full md:w-auto">
+                     <button
+                       onClick={handleDeleteSelectedImages}
+                       disabled={selectedGalleryItems.length === 0}
+                       className="flex-1 md:flex-none px-4 py-2.5 bg-red-400 text-white rounded-full text-xs font-bold shadow-sm disabled:opacity-50 hover:bg-red-500 transition-colors flex items-center justify-center gap-2"
+                     >
+                       <Trash2 size={14} /> Supprimer ({selectedGalleryItems.length})
+                     </button>
+                     <button
+                       onClick={() => {
+                         setIsGallerySelectionMode(false);
+                         setSelectedGalleryItems([]);
+                       }}
+                       className="flex-1 md:flex-none px-4 py-2.5 bg-white text-[#8D7B68] border border-[#E8D5C4]/50 rounded-full text-xs font-bold shadow-sm hover:bg-gray-50 transition-colors"
+                     >
+                       Annuler
+                     </button>
+                   </div>
+                 ) : (
+                   <button
+                     onClick={() => setIsGallerySelectionMode(true)}
+                     className="w-full md:w-auto px-4 py-2.5 bg-white text-[#8D7B68] border border-[#E8D5C4]/50 rounded-full text-xs font-bold shadow-sm flex items-center justify-center gap-2 hover:bg-[#FAF7F2] transition-colors"
+                   >
+                     <Edit3 size={14} /> Sélectionner
+                   </button>
+                 )}
+
+                 <div className="relative w-full md:w-72">
+                   <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#B8A99A]" />
+                   <input 
+                     type="text" 
+                     placeholder="Chercher cliente, article, N°..." 
+                     value={gallerySearch} 
+                     onChange={(e) => setGallerySearch(e.target.value)} 
+                     className="w-full pl-10 pr-4 py-2.5 bg-white rounded-full text-xs font-bold shadow-sm outline-none text-[#8D7B68] border border-[#E8D5C4]/40 focus:border-[#D4B996]" 
+                   />
+                 </div>
                </div>
             </div>
 
-            {/* ICI : Remplacement de galleryItems par filteredGalleryItems */}
             {filteredGalleryItems.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 opacity-50">
                 <ImageIcon size={48} className="text-[#D4B996] mb-4" />
@@ -1623,35 +1698,61 @@ const MainApp = ({ user }) => {
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 pb-4">
-                {/* ICI AUSSI : Remplacement de galleryItems.map par filteredGalleryItems.map */}
-                {filteredGalleryItems.map((item, idx) => (
-                  <div 
-                    key={`${item.id}-${idx}`} 
-                    onClick={() => openOrderForEdit(item.orderObj)}
-                    className="bg-white rounded-2xl p-2 border border-[#E8D5C4]/30 shadow-sm hover:shadow-md transition-all cursor-pointer group flex flex-col hover:-translate-y-1"
-                  >
-                    <div className="aspect-square rounded-xl overflow-hidden mb-2 relative bg-[#FAF7F2]/50">
-                      <img 
-                        src={item.itemImage} 
-                        alt={item.name} 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        loading="lazy"
-                      />
-                      <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-white/90 backdrop-blur-sm shadow-sm border border-white/50 text-[8px] font-black uppercase tracking-wider text-[#8D7B68]">
-                        {item.status}
+                {filteredGalleryItems.map((item, idx) => {
+                  const isSelected = selectedGalleryItems.some(s => s.itemId === item.id && s.orderId === item.orderId);
+                  
+                  return (
+                    <div 
+                      key={`${item.id}-${idx}`} 
+                      onClick={() => {
+                        if (isGallerySelectionMode) {
+                          if (isSelected) {
+                            setSelectedGalleryItems(prev => prev.filter(s => !(s.itemId === item.id && s.orderId === item.orderId)));
+                          } else {
+                            setSelectedGalleryItems(prev => [...prev, { itemId: item.id, orderId: item.orderId }]);
+                          }
+                        } else {
+                          openOrderForEdit(item.orderObj);
+                        }
+                      }}
+                      className={`bg-white rounded-2xl p-2 border shadow-sm transition-all cursor-pointer group flex flex-col ${
+                        isGallerySelectionMode && isSelected 
+                          ? "border-red-400 bg-red-50/30 scale-95 ring-2 ring-red-400" 
+                          : "border-[#E8D5C4]/30 hover:shadow-md hover:-translate-y-1"
+                      }`}
+                    >
+                      <div className="aspect-square rounded-xl overflow-hidden mb-2 relative bg-[#FAF7F2]/50">
+                        <img 
+                          src={item.itemImage} 
+                          alt={item.name} 
+                          className={`w-full h-full object-cover transition-transform duration-500 ${!isGallerySelectionMode && "group-hover:scale-105"} ${isSelected && "opacity-60 grayscale-[50%]"}`}
+                          loading="lazy"
+                        />
+                        
+                        {/* Indicateur de sélection ou Statut */}
+                        {isGallerySelectionMode ? (
+                          <div className={`absolute top-2 right-2 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors bg-white/90 shadow-sm z-10 ${isSelected ? "border-red-400" : "border-gray-300"}`}>
+                            {isSelected && <div className="w-3 h-3 bg-red-400 rounded-sm" />}
+                          </div>
+                        ) : (
+                          <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-white/90 backdrop-blur-sm shadow-sm border border-white/50 text-[8px] font-black uppercase tracking-wider text-[#8D7B68]">
+                            {item.status}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="px-1 flex flex-col gap-0.5">
+                        <span className="text-[10px] font-black text-[#8D7B68]">{item.orderNumber}</span>
+                        <span className="text-[11px] font-bold text-[#4A3F35] truncate w-full" title={item.customerName}>
+                          {item.customerName}
+                        </span>
+                        <span className="text-[9px] text-[#B8A99A] font-medium truncate w-full mt-1" title={item.name}>
+                          {item.name}
+                        </span>
                       </div>
                     </div>
-                    <div className="px-1 flex flex-col gap-0.5">
-                      <span className="text-[10px] font-black text-[#8D7B68]">{item.orderNumber}</span>
-                      <span className="text-[11px] font-bold text-[#4A3F35] truncate w-full" title={item.customerName}>
-                        {item.customerName}
-                      </span>
-                      <span className="text-[9px] text-[#B8A99A] font-medium truncate w-full mt-1" title={item.name}>
-                        {item.name}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

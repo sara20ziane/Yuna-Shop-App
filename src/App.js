@@ -59,8 +59,7 @@ import {
   Loader2,
   UploadCloud,
   Image as ImageIcon,
-  Scale,
-  Copy
+  Scale
 } from "lucide-react";
 import {
   LineChart,
@@ -749,53 +748,6 @@ const MainApp = ({ user }) => {
   // --- NOUVEAUX ÉTATS POUR LA SÉLECTION GALERIE ---
   const [isGallerySelectionMode, setIsGallerySelectionMode] = useState(false);
   const [selectedGalleryItems, setSelectedGalleryItems] = useState([]);
-  // --- NOUVELLES FONCTIONNALITÉS COMMANDES ---
-  const [selectedOrders, setSelectedOrders] = useState([]);
-
-  // 1. Copier les infos pour le livreur
-  const handleCopyCustomerInfo = (order) => {
-    const c = customers.find(x => x.id === order.customerId);
-    if (!c) {
-      showToast("Cliente introuvable", "error");
-      return;
-    }
-    const text = `${c.name} - ${c.phone}${c.phone2 ? ` / ${c.phone2}` : ""} - ${c.wilaya} - ${c.commune} - ${c.deliveryMode === "stopdesk" ? `Stopdesk: ${c.stopdeskName}` : "Domicile"}`;
-    navigator.clipboard.writeText(text);
-    showToast("Infos copiées pour le livreur ! 📋");
-  };
-
-  // 2. Encaissement éclair
-  const handleQuickPayment = async (order) => {
-    const amountStr = window.prompt(`Combien as-tu encaissé pour la commande de ${order.customerName} ?\nReste à payer : ${formatDA(calculateReste(order))}`);
-    if (!amountStr) return;
-    const amount = parseFloat(amountStr);
-    if (isNaN(amount) || amount <= 0) {
-      showToast("Montant invalide", "error");
-      return;
-    }
-    try {
-      const newPayment = { id: Date.now(), amount, date: new Date().toISOString().split("T")[0], method: "Cash" };
-      const updatedPayments = [...(order.payments || []), newPayment];
-      await updateDoc(doc(db, "artifacts", appId, "public", "data", "orders", order.id), { payments: updatedPayments });
-      showToast(`Paiement de ${formatDA(amount)} ajouté avec succès !`);
-    } catch (error) {
-      showToast("Erreur lors de l'encaissement", "error");
-    }
-  };
-
-  // 3. Mise à jour groupée des statuts
-  const handleBulkStatusUpdate = async (newStatus) => {
-    if (!newStatus || selectedOrders.length === 0) return;
-    try {
-      for (const orderId of selectedOrders) {
-        await updateDoc(doc(db, "artifacts", appId, "public", "data", "orders", orderId), { status: newStatus });
-      }
-      showToast(`${selectedOrders.length} commandes passées en "${newStatus}" !`);
-      setSelectedOrders([]); // Vide la sélection après succès
-    } catch (error) {
-      showToast("Erreur de mise à jour groupée", "error");
-    }
-  };
 
   // --- FONCTION DE SUPPRESSION MULTIPLE GALERIE ---
   const handleDeleteSelectedImages = async () => {
@@ -820,6 +772,17 @@ const MainApp = ({ user }) => {
           });
         }
       });
+      // --- FONCTION DE MISE À JOUR RAPIDE DU STATUT ---
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    try {
+      const orderRef = doc(db, "artifacts", appId, "public", "data", "orders", orderId);
+      await updateDoc(orderRef, { status: newStatus });
+      showToast(`Statut passé à : ${newStatus}`);
+    } catch (error) {
+      console.error(error);
+      showToast("Erreur lors de la mise à jour du statut", "error");
+    }
+  };
 
       // Exécuter la mise à jour pour chaque commande impactée
       for (const orderId in updatesByOrder) {
@@ -833,18 +796,6 @@ const MainApp = ({ user }) => {
     } catch (error) {
       console.error(error);
       showToast("Erreur lors de la suppression des photos", "error");
-    }
-  };
-
-  // --- FONCTION DE MISE À JOUR RAPIDE DU STATUT ---
-  const handleUpdateOrderStatus = async (orderId, newStatus) => {
-    try {
-      const orderRef = doc(db, "artifacts", appId, "public", "data", "orders", orderId);
-      await updateDoc(orderRef, { status: newStatus });
-      showToast(`Statut passé à : ${newStatus}`);
-    } catch (error) {
-      console.error(error);
-      showToast("Erreur lors de la mise à jour du statut", "error");
     }
   };
 
@@ -1580,162 +1531,98 @@ const MainApp = ({ user }) => {
             </div>
 
             {/* Desktop table */}
-            <div className="hidden md:block relative">
-              
-              {/* BARRE D'ACTIONS GROUPÉES */}
-              {selectedOrders.length > 0 && (
-                <div className="bg-[#8D7B68] p-3 rounded-2xl mb-4 flex items-center justify-between gap-3 animate-in slide-in-from-top-2 shadow-lg text-white absolute -top-16 left-0 right-0 z-20">
-                  <span className="text-xs font-bold pl-4">{selectedOrders.length} commande(s) sélectionnée(s)</span>
-                  <div className="flex gap-2">
-                    <select 
-                      onChange={(e) => handleBulkStatusUpdate(e.target.value)}
-                      className="w-48 px-3 py-2 rounded-xl text-xs font-bold text-[#8D7B68] outline-none"
-                      defaultValue=""
-                    >
-                      <option value="" disabled>Changer le statut en...</option>
-                      {orderStatusesList.map(st => <option key={st} value={st}>{st}</option>)}
-                    </select>
-                    <button onClick={() => setSelectedOrders([])} className="p-2 bg-white/20 hover:bg-white/30 rounded-xl transition-colors"><X size={16} /></button>
-                  </div>
+            <div className="hidden md:block bg-white/80 rounded-[2rem] shadow-sm overflow-auto max-h-[65vh] custom-scrollbar border border-[#E8D5C4]/30 relative">
+              <table className="w-full text-left whitespace-nowrap min-w-[800px]">
+                <thead className="bg-[#FAF7F2] border-b border-[#E8D5C4]/20 text-[#B8A99A] font-bold uppercase tracking-widest text-[9px] sticky top-0 z-10 shadow-sm">
+                  <tr>
+                    <th className="p-4">N°</th>
+                    <th className="p-4">Cliente</th>
+                    <th className="p-4">État</th>
+                    <th className="p-4 text-right">Total</th>
+                    <th className="p-4 text-right">Reste</th>
+                    <th className="p-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 text-[11px]">
+                  {filteredOrders.map((o) => {
+                    const total = (parseFloat(o.totalVente) || 0) + (parseFloat(o.shippingNational) || 0);
+                    const reste = calculateReste(o);
+                    const isLate = o.status === "En cours de livraison" && lateDeliveries.find((late) => late.id === o.id);
+                    return (
+                      <tr key={o.id} className={`group transition-colors ${isLate ? "bg-red-50/40 hover:bg-red-50/60" : "hover:bg-[#FAF7F2]/50"}`}>
+                        <td className="p-4 font-bold text-[#8D7B68]">
+                          {o.orderNumber}
+                          {isLate && <AlertTriangle size={12} className="inline ml-2 text-red-500 animate-pulse" title="En livraison depuis +7 jours" />}
+                        </td>
+                        <td className="p-4 font-medium text-[#4A3F35]">{o.customerName}</td>
+                        {/* NOUVEAU CODE (Desktop) */}
+<td className="p-4">
+  <select
+    value={o.status}
+    onChange={(e) => handleUpdateOrderStatus(o.id, e.target.value)}
+    className={`px-2 py-1 bg-white rounded-md text-[9px] uppercase font-bold shadow-sm border outline-none cursor-pointer hover:bg-gray-50 transition-colors appearance-none text-center ${
+      isLate ? "border-red-300 text-red-500" : "border-gray-200 text-[#8D7B68]"
+    }`}
+  >
+    {orderStatusesList.map((st) => (
+      <option key={st} value={st}>{st}</option>
+    ))}
+  </select>
+</td>
+                        <td className="p-4 text-right font-black text-[#8D7B68]">{formatDA(total)}</td>
+                        <td className={`p-4 text-right font-black ${reste > 0 ? "text-[#EF4444]" : "text-green-500"}`}>{reste > 0 ? formatDA(reste) : "Réglé"}</td>
+                        <td className="p-4 text-right flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                          <button onClick={() => setShowCostBreakdown(o)} className="text-blue-400 p-1.5 hover:bg-blue-50 rounded-lg"><Calculator size={16} /></button>
+                          <button onClick={() => setShowDeliverySlip(o)} className="text-[#8D7B68] p-1.5 hover:bg-[#FAF7F2] rounded-lg"><Truck size={16} /></button>
+                          <button onClick={() => setShowReceipt(o)} className="text-[#D4B996] p-1.5 hover:bg-[#FAF7F2] rounded-lg"><Receipt size={16} /></button>
+                          <button onClick={() => openOrderForEdit(o)} className="text-gray-400 p-1.5 hover:bg-gray-100 rounded-lg"><Edit3 size={16} /></button>
+                          <button onClick={() => setDeleteTarget({ id: o.id, collection: "orders", label: o.orderNumber })} className="text-red-300 p-1.5 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <div className="sticky bottom-0 bg-white border-t border-[#E8D5C4]/50 p-4 flex justify-end gap-8 shadow-[0_-5px_15px_rgba(0,0,0,0.02)]">
+                <div className="text-right">
+                  <p className="text-[9px] uppercase font-bold text-gray-400">Total CA Filtré</p>
+                  <p className="text-sm font-black text-[#8D7B68]">{formatDA(filteredOrders.reduce((sum, o) => sum + (parseFloat(o.totalVente) || 0) + (parseFloat(o.shippingNational) || 0), 0))}</p>
                 </div>
-              )}
-
-              <div className="bg-white/80 rounded-[2rem] shadow-sm overflow-auto max-h-[65vh] custom-scrollbar border border-[#E8D5C4]/30 relative">
-                <table className="w-full text-left whitespace-nowrap min-w-[800px]">
-                  <thead className="bg-[#FAF7F2] border-b border-[#E8D5C4]/20 text-[#B8A99A] font-bold uppercase tracking-widest text-[9px] sticky top-0 z-10 shadow-sm">
-                    <tr>
-                      <th className="p-4 w-10">
-                        <input type="checkbox" onChange={(e) => setSelectedOrders(e.target.checked ? filteredOrders.map(o => o.id) : [])} checked={selectedOrders.length === filteredOrders.length && filteredOrders.length > 0} className="w-4 h-4 cursor-pointer accent-[#8D7B68] rounded" />
-                      </th>
-                      <th className="p-4">N°</th>
-                      <th className="p-4">Cliente</th>
-                      <th className="p-4 text-center">État</th>
-                      <th className="p-4 text-right">Total</th>
-                      <th className="p-4 text-right">Reste</th>
-                      <th className="p-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50 text-[11px]">
-                    {filteredOrders.map((o) => {
-                      const total = (parseFloat(o.totalVente) || 0) + (parseFloat(o.shippingNational) || 0);
-                      const reste = calculateReste(o);
-                      const isLate = o.status === "En cours de livraison" && lateDeliveries.find((late) => late.id === o.id);
-                      const isSelected = selectedOrders.includes(o.id);
-                      
-                      // CODE COULEUR INTELLIGENT
-                      let resteColor = "text-green-500";
-                      if (reste > 0) {
-                        if (o.status.includes("Livrée")) resteColor = "text-red-500 font-black animate-pulse"; // Urgence !
-                        else resteColor = "text-orange-500"; // En attente
-                      }
-
-                      return (
-                        <tr key={o.id} className={`group transition-colors ${isLate ? "bg-red-50/40 hover:bg-red-50/60" : isSelected ? "bg-[#FAF7F2] border-l-4 border-l-[#D4B996]" : "hover:bg-[#FAF7F2]/50 border-l-4 border-l-transparent"}`}>
-                          <td className="p-4">
-                            <input type="checkbox" checked={isSelected} onChange={(e) => { if(e.target.checked) setSelectedOrders([...selectedOrders, o.id]); else setSelectedOrders(selectedOrders.filter(id => id !== o.id)); }} className="w-4 h-4 cursor-pointer accent-[#8D7B68] rounded" />
-                          </td>
-                          <td className="p-4 font-bold text-[#8D7B68]">
-                            {o.orderNumber}
-                            {isLate && <AlertTriangle size={12} className="inline ml-2 text-red-500 animate-pulse" title="En livraison depuis +7 jours" />}
-                          </td>
-                          <td className="p-4 font-medium text-[#4A3F35]">
-                            <div className="flex items-center gap-2">
-                              {o.customerName}
-                              <button onClick={() => handleCopyCustomerInfo(o)} title="Copier les infos pour le livreur" className="text-gray-300 hover:text-[#8D7B68] transition-colors"><Copy size={14}/></button>
-                            </div>
-                          </td>
-                          <td className="p-4 text-center">
-                            <select
-                              value={o.status}
-                              onChange={(e) => handleUpdateOrderStatus(o.id, e.target.value)}
-                              className={`px-2 py-1 bg-white rounded-md text-[9px] uppercase font-bold shadow-sm border outline-none cursor-pointer hover:bg-gray-50 transition-colors appearance-none text-center ${isLate ? "border-red-300 text-red-500" : "border-gray-200 text-[#8D7B68]"}`}
-                            >
-                              {orderStatusesList.map((st) => <option key={st} value={st}>{st}</option>)}
-                            </select>
-                          </td>
-                          <td className="p-4 text-right font-black text-[#8D7B68]">{formatDA(total)}</td>
-                          <td className="p-4">
-                            <div className={`flex items-center justify-end gap-2 font-black ${resteColor}`}>
-                              {reste > 0 ? (
-                                <>
-                                  {formatDA(reste)}
-                                  <button onClick={() => handleQuickPayment(o)} title="Encaissement rapide" className="p-1 bg-white border border-[#E8D5C4] rounded text-[#8D7B68] hover:bg-[#8D7B68] hover:text-white transition-colors shadow-sm"><Plus size={12} /></button>
-                                </>
-                              ) : "Réglé"}
-                            </div>
-                          </td>
-                          <td className="p-4 text-right flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                            <button onClick={() => setShowCostBreakdown(o)} className="text-blue-400 p-1.5 hover:bg-blue-50 rounded-lg"><Calculator size={16} /></button>
-                            <button onClick={() => setShowDeliverySlip(o)} className="text-[#8D7B68] p-1.5 hover:bg-[#FAF7F2] rounded-lg"><Truck size={16} /></button>
-                            <button onClick={() => setShowReceipt(o)} className="text-[#D4B996] p-1.5 hover:bg-[#FAF7F2] rounded-lg"><Receipt size={16} /></button>
-                            <button onClick={() => openOrderForEdit(o)} className="text-gray-400 p-1.5 hover:bg-gray-100 rounded-lg"><Edit3 size={16} /></button>
-                            <button onClick={() => setDeleteTarget({ id: o.id, collection: "orders", label: o.orderNumber })} className="text-red-300 p-1.5 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                <div className="text-right">
+                  <p className="text-[9px] uppercase font-bold text-gray-400">Total Reste Client</p>
+                  <p className="text-sm font-black text-red-500">{formatDA(filteredOrders.reduce((sum, o) => sum + calculateReste(o), 0))}</p>
+                </div>
               </div>
             </div>
 
             {/* Mobile cards */}
-            <div className="md:hidden space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2 touch-pan-y relative">
-              
-              {/* BARRE D'ACTIONS GROUPÉES MOBILE */}
-              {selectedOrders.length > 0 && (
-                <div className="sticky top-0 z-20 bg-[#8D7B68] p-3 rounded-2xl mb-2 flex items-center justify-between gap-2 shadow-lg text-white">
-                  <span className="text-[10px] font-bold pl-1">{selectedOrders.length} sélectionnées</span>
-                  <select onChange={(e) => handleBulkStatusUpdate(e.target.value)} className="flex-1 px-2 py-1.5 rounded-lg text-[10px] font-bold text-[#8D7B68] outline-none" defaultValue="">
-                    <option value="" disabled>Statut...</option>
-                    {orderStatusesList.map(st => <option key={st} value={st}>{st}</option>)}
-                  </select>
-                  <button onClick={() => setSelectedOrders([])} className="p-1.5 bg-white/20 rounded-lg"><X size={14} /></button>
-                </div>
-              )}
-
+            <div className="md:hidden space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2 touch-pan-y">
               {filteredOrders.map((o) => {
                 const total = (parseFloat(o.totalVente) || 0) + (parseFloat(o.shippingNational) || 0);
                 const reste = calculateReste(o);
                 const isLate = o.status === "En cours de livraison" && lateDeliveries.find((late) => late.id === o.id);
-                const isSelected = selectedOrders.includes(o.id);
-                
-                let resteColor = "text-green-500";
-                if (reste > 0) {
-                  if (o.status.includes("Livrée")) resteColor = "text-red-500 font-black animate-pulse";
-                  else resteColor = "text-orange-500";
-                }
-
                 return (
-                  <div key={o.id} className={`p-4 rounded-2xl shadow-sm border flex flex-col gap-3 ${isLate ? "bg-red-50/40 border-red-200" : isSelected ? "bg-[#FAF7F2] border-[#D4B996] ring-1 ring-[#D4B996]" : "bg-white border-[#E8D5C4]/30"}`}>
+                  <div key={o.id} className={`p-4 rounded-2xl shadow-sm border flex flex-col gap-3 ${isLate ? "bg-red-50/40 border-red-200" : "bg-white border-[#E8D5C4]/30"}`}>
                     <div className="flex justify-between items-start">
-                      <div className="flex gap-3">
-                        <input type="checkbox" checked={isSelected} onChange={(e) => { if(e.target.checked) setSelectedOrders([...selectedOrders, o.id]); else setSelectedOrders(selectedOrders.filter(id => id !== o.id)); }} className="w-4 h-4 mt-1 cursor-pointer accent-[#8D7B68] rounded" />
-                        <div>
-                          <span className="text-[10px] text-[#B8A99A] font-bold uppercase">{o.orderNumber} {isLate && <AlertTriangle size={12} className="inline ml-1 text-red-500" />}</span>
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-bold text-[#4A3F35] text-sm">{o.customerName}</h4>
-                            <button onClick={() => handleCopyCustomerInfo(o)} className="text-gray-300 hover:text-[#8D7B68]"><Copy size={12}/></button>
-                          </div>
-                        </div>
+                      <div>
+                        <span className="text-[10px] text-[#B8A99A] font-bold uppercase">{o.orderNumber} {isLate && <AlertTriangle size={12} className="inline ml-1 text-red-500" />}</span>
+                        <h4 className="font-bold text-[#4A3F35] text-sm">{o.customerName}</h4>
                       </div>
-                      <select value={o.status} onChange={(e) => handleUpdateOrderStatus(o.id, e.target.value)} className="px-2 py-1 bg-white rounded-lg text-[9px] uppercase font-bold text-[#8D7B68] border border-[#E8D5C4]/50 shadow-sm outline-none cursor-pointer text-right appearance-none" style={{ direction: "rtl" }}>
-                        {orderStatusesList.map((st) => <option key={st} value={st} style={{ direction: "ltr" }}>{st}</option>)}
-                      </select>
+                      {/* NOUVEAU CODE (Mobile) */}
+<select
+  value={o.status}
+  onChange={(e) => handleUpdateOrderStatus(o.id, e.target.value)}
+  className="px-2 py-1 bg-white rounded-lg text-[9px] uppercase font-bold text-[#8D7B68] border border-[#E8D5C4]/50 shadow-sm outline-none cursor-pointer text-right appearance-none"
+  style={{ direction: "rtl" }}
+>
+  {orderStatusesList.map((st) => (
+    <option key={st} value={st} style={{ direction: "ltr" }}>{st}</option>
+  ))}
+</select>
                     </div>
                     <div className="flex justify-between items-center bg-[#FAF7F2]/50 p-2.5 rounded-xl border border-transparent">
                       <div><p className="text-[8px] uppercase text-gray-400 font-bold">Total</p><p className="font-black text-[#8D7B68] text-xs">{formatDA(total)}</p></div>
-                      <div className="text-right">
-                        <p className="text-[8px] uppercase text-gray-400 font-bold">Reste</p>
-                        <div className={`flex items-center justify-end gap-1 font-black text-xs ${resteColor}`}>
-                          {reste > 0 ? (
-                            <>
-                              {formatDA(reste)}
-                              <button onClick={() => handleQuickPayment(o)} className="p-1 bg-white border border-[#E8D5C4] rounded text-[#8D7B68] shadow-sm"><Plus size={10} /></button>
-                            </>
-                          ) : "Payé"}
-                        </div>
-                      </div>
+                      <div className="text-right"><p className="text-[8px] uppercase text-gray-400 font-bold">Reste</p><p className={`font-black text-xs ${reste > 0 ? "text-red-400" : "text-green-500"}`}>{reste > 0 ? formatDA(reste) : "Payé"}</p></div>
                     </div>
                     <div className="flex justify-between items-center pt-2 border-t border-gray-100">
                       <div className="flex gap-1">
@@ -1752,10 +1639,10 @@ const MainApp = ({ user }) => {
                 );
               })}
             </div>
+          </div>
         )}
-
 {/* ONGLET STATION DE PESÉE */}
-        {activeTab === "pesee" && (
+        {activeTab === "pesee" && (
           <StationDePesee 
             orders={orders} 
             arrivages={arrivages} 

@@ -60,6 +60,7 @@ import {
   UploadCloud,
   Image as ImageIcon,
   Scale
+  Copy
 } from "lucide-react";
 import {
   LineChart,
@@ -1281,6 +1282,29 @@ const MainApp = ({ user }) => {
     setOrderReceiptImage(o.receiptImage || "");
     setShowAddOrder(true);
   };
+  const handleCopyCustomerInfo = (order, e) => {
+    e.stopPropagation(); // Évite de déclencher d'autres clics
+    const customer = customers.find(c => c.id === order.customerId);
+    
+    if (!customer) {
+      showToast("Détails cliente introuvables.", "error");
+      return;
+    }
+
+    const phoneStr = customer.phone2 ? `${customer.phone} / ${customer.phone2}` : customer.phone;
+    const deliveryStr = customer.deliveryMode === 'stopdesk' 
+      ? `Stopdesk (${customer.stopdeskName || ''})` 
+      : 'Domicile';
+
+    const textToCopy = `${customer.name} - ${phoneStr} - ${customer.wilaya} - ${customer.commune} - ${deliveryStr}`;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      showToast("Infos copiées pour le livreur ! 📋", "success");
+    }).catch(err => {
+      console.error("Erreur de copie :", err);
+      showToast("Erreur lors de la copie.", "error");
+    });
+  };
 
   return (
     <div className="flex h-screen overflow-hidden font-sans bg-[#FDFBF7] text-[#4A3F35] print:block print:h-auto print:overflow-visible print:bg-white">
@@ -1554,7 +1578,18 @@ const MainApp = ({ user }) => {
                           {o.orderNumber}
                           {isLate && <AlertTriangle size={12} className="inline ml-2 text-red-500 animate-pulse" title="En livraison depuis +7 jours" />}
                         </td>
-                        <td className="p-4 font-medium text-[#4A3F35]">{o.customerName}</td>
+                        <td className="p-4 font-medium text-[#4A3F35]">
+  <div className="flex items-center gap-2">
+    {o.customerName}
+    <button
+      onClick={(e) => handleCopyCustomerInfo(o, e)}
+      className="p-1.5 text-[#B8A99A] bg-gray-50 rounded-md hover:bg-[#8D7B68] hover:text-white transition-all shadow-sm border border-gray-100"
+      title="Copier les infos (Livreur)"
+    >
+      <Copy size={12} />
+    </button>
+  </div>
+</td>
                         {/* NOUVEAU CODE (Desktop) */}
 <td className="p-4">
   <select
@@ -1606,7 +1641,16 @@ const MainApp = ({ user }) => {
                     <div className="flex justify-between items-start">
                       <div>
                         <span className="text-[10px] text-[#B8A99A] font-bold uppercase">{o.orderNumber} {isLate && <AlertTriangle size={12} className="inline ml-1 text-red-500" />}</span>
-                        <h4 className="font-bold text-[#4A3F35] text-sm">{o.customerName}</h4>
+                        <div className="flex items-center gap-2 mt-1">
+  <h4 className="font-bold text-[#4A3F35] text-sm">{o.customerName}</h4>
+  <button
+    onClick={(e) => handleCopyCustomerInfo(o, e)}
+    className="p-1.5 text-[#8D7B68] bg-[#FAF7F2] rounded-md shadow-sm border border-[#E8D5C4]/50 active:scale-95 transition-transform"
+    title="Copier les infos (Livreur)"
+  >
+    <Copy size={14} />
+  </button>
+</div>
                       </div>
                       {/* NOUVEAU CODE (Mobile) */}
 <select

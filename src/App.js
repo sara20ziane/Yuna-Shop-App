@@ -772,6 +772,17 @@ const MainApp = ({ user }) => {
           });
         }
       });
+      // --- FONCTION DE MISE À JOUR RAPIDE DU STATUT ---
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    try {
+      const orderRef = doc(db, "artifacts", appId, "public", "data", "orders", orderId);
+      await updateDoc(orderRef, { status: newStatus });
+      showToast(`Statut passé à : ${newStatus}`);
+    } catch (error) {
+      console.error(error);
+      showToast("Erreur lors de la mise à jour du statut", "error");
+    }
+  };
 
       // Exécuter la mise à jour pour chaque commande impactée
       for (const orderId in updatesByOrder) {
@@ -1544,9 +1555,20 @@ const MainApp = ({ user }) => {
                           {isLate && <AlertTriangle size={12} className="inline ml-2 text-red-500 animate-pulse" title="En livraison depuis +7 jours" />}
                         </td>
                         <td className="p-4 font-medium text-[#4A3F35]">{o.customerName}</td>
-                        <td className="p-4">
-                          <span className={`px-2 py-1 bg-white rounded-md text-[9px] uppercase font-bold shadow-sm border ${isLate ? "border-red-300 text-red-500" : "border-gray-100 text-gray-500"}`}>{o.status}</span>
-                        </td>
+                        {/* NOUVEAU CODE (Desktop) */}
+<td className="p-4">
+  <select
+    value={o.status}
+    onChange={(e) => handleUpdateOrderStatus(o.id, e.target.value)}
+    className={`px-2 py-1 bg-white rounded-md text-[9px] uppercase font-bold shadow-sm border outline-none cursor-pointer hover:bg-gray-50 transition-colors appearance-none text-center ${
+      isLate ? "border-red-300 text-red-500" : "border-gray-200 text-[#8D7B68]"
+    }`}
+  >
+    {orderStatusesList.map((st) => (
+      <option key={st} value={st}>{st}</option>
+    ))}
+  </select>
+</td>
                         <td className="p-4 text-right font-black text-[#8D7B68]">{formatDA(total)}</td>
                         <td className={`p-4 text-right font-black ${reste > 0 ? "text-[#EF4444]" : "text-green-500"}`}>{reste > 0 ? formatDA(reste) : "Réglé"}</td>
                         <td className="p-4 text-right flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
@@ -1586,7 +1608,17 @@ const MainApp = ({ user }) => {
                         <span className="text-[10px] text-[#B8A99A] font-bold uppercase">{o.orderNumber} {isLate && <AlertTriangle size={12} className="inline ml-1 text-red-500" />}</span>
                         <h4 className="font-bold text-[#4A3F35] text-sm">{o.customerName}</h4>
                       </div>
-                      <span className="px-2 py-1 bg-gray-50 rounded-lg text-[9px] uppercase font-bold text-gray-500 border border-gray-100">{o.status}</span>
+                      {/* NOUVEAU CODE (Mobile) */}
+<select
+  value={o.status}
+  onChange={(e) => handleUpdateOrderStatus(o.id, e.target.value)}
+  className="px-2 py-1 bg-white rounded-lg text-[9px] uppercase font-bold text-[#8D7B68] border border-[#E8D5C4]/50 shadow-sm outline-none cursor-pointer text-right appearance-none"
+  style={{ direction: "rtl" }}
+>
+  {orderStatusesList.map((st) => (
+    <option key={st} value={st} style={{ direction: "ltr" }}>{st}</option>
+  ))}
+</select>
                     </div>
                     <div className="flex justify-between items-center bg-[#FAF7F2]/50 p-2.5 rounded-xl border border-transparent">
                       <div><p className="text-[8px] uppercase text-gray-400 font-bold">Total</p><p className="font-black text-[#8D7B68] text-xs">{formatDA(total)}</p></div>

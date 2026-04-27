@@ -59,7 +59,7 @@ import {
   Loader2,
   UploadCloud,
   Image as ImageIcon,
-  Scale
+  Scale,
   Copy
 } from "lucide-react";
 import {

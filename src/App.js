@@ -682,6 +682,204 @@ const StationDePesee = ({ orders, arrivages, showToast, onNewArrivage }) => {
     </div>
   );
 };
+// --- COMPOSANT : STATION DE PRIX D'ACHAT ---
+const StationPrixAchat = ({ orders, showToast }) => {
+  const [prixSaisi, setPrixSaisi] = useState("");
+  const [indexActuel, setIndexActuel] = useState(0);
+  const inputRef = React.useRef(null);
+
+  // 1. Récupérer les articles sans prix d'achat
+  const articlesAPricer = React.useMemo(() => {
+    let list = [];
+    orders.forEach((o) => {
+      // On ignore les commandes terminées ou annulées
+      if (o.status === "Annulée" || o.status === "Payée et livrée" || o.status === "Livrée sans paiement") return;
+      
+      (o.items || []).forEach((item) => {
+        // On cible les articles non retournés, où le prix est vide, null, ou bien à 0 MAIS sans le flag 'prixAchatSaisi'
+        if (item.status !== "Retourné Fournisseur" && 
+           (item.priceAchatEuro === "" || item.priceAchatEuro === undefined || (!item.prixAchatSaisi && item.priceAchatEuro == 0))) {
+          list.push({ ...item, orderId: o.id, orderNumber: o.orderNumber, customerName: o.customerName, orderObj: o });
+        }
+      });
+    });
+    // Tri par date (les plus anciens d'abord)
+    return list.sort((a, b) => {
+      const timeA = a.orderObj.date?.toMillis ? a.orderObj.date.toMillis() : new Date(a.orderObj.date || 0).getTime();
+      const timeB = b.orderObj.date?.toMillis ? b.orderObj.date.toMillis() : new Date(b.orderObj.date || 0).getTime();
+      return timeA - timeB;
+    });
+  }, [orders]);
+
+  React.useEffect(() => {
+    if (indexActuel >= articlesAPricer.length) setIndexActuel(0);
+  }, [articlesAPricer.length, indexActuel]);
+
+  React.useEffect(() => {
+    if (inputRef.current) inputRef.current.focus();
+  }, [indexActuel, articlesAPricer]);
+
+  // FONCTION POUR SAUVEGARDER
+  const soumettrePrix = async (currentItem, prixForce = null) => {
+    const prixAEnregistrer = prixForce !== null ? prixForce : prixSaisi;
+    
+    if (prixAEnregistrer === "") return;
+
+    try {
+      const orderRef = doc(db, "artifacts", appId, "public", "data", "orders", currentItem.orderId);
+      
+      const updatedItems = currentItem.orderObj.items.map(it => {
+        if (it.id === currentItem.id) {
+          return { 
+            ...it, 
+            priceAchatEuro: parseFloat(prixAEnregistrer), 
+            prixAchatSaisi: true // Ce flag dit au système : "Sara a validé ce prix, même si c'est 0"
+          };
+        }
+        return it;
+      });
+
+      await updateDoc(orderRef, { items: updatedItems });
+      showToast(prixForce === 0 ? "Article marqué comme gratuit ! 🎁" : `Prix validé : ${prixAEnregistrer} €`);
+      setPrixSaisi("");
+    } catch (error) {
+      showToast("Erreur lors de la sauvegarde", "error");
+    }
+  };
+
+  const handleValiderPrix = async (e, currentItem) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      soumettrePrix(currentItem);
+    }
+  };
+
+  const currentItem = articlesAPricer[indexActuel];
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-4 animate-in zoom-in-95 mt-2 md:mt-4">
+      
+      {/* EN-TÊTE */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 px-2 bg-white p-4 rounded-[1.5rem] border border-[#E8D5C4]/40 shadow-sm">
+        <div className="flex flex-col">
+          <h3 className="font-serif text-[#8D7B68] text-sm md:text-lg font-bold flex items-center gap-2 uppercase tracking-widest shrink-0">
+            <Euro size={20} className="text-[#D4B996]"/> Saisie des Prix d'Achat
+          </h3>
+          <p className="text-[9px] font-bold text-gray-400 mt-1">Remplis les prix en euros de tes articles non chiffrés.</p>
+        </div>
+        
+        <span className="bg-[#FAF7F2] border border-[#E8D5C4]/50 text-[#8D7B68] text-[10px] px-4 py-3 rounded-xl font-black uppercase shadow-sm shrink-0">
+          En attente : {articlesAPricer.length}
+        </span>
+      </div>
+
+      {articlesAPricer.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 opacity-60 bg-white rounded-[2rem] border border-[#E8D5C4]/30 shadow-sm mt-4">
+          <Euro size={64} className="text-[#D4B996] mb-4" />
+          <h3 className="text-xl font-serif font-bold text-[#8D7B68]">Tout est à jour !</h3>
+          <p className="text-sm font-bold text-[#B8A99A]">Tous les articles de tes commandes en cours ont un prix d'achat.</p>
+        </div>
+      ) : (
+        <>
+          {/* CARTE PRINCIPALE */}
+          {currentItem && (
+            <div className="p-6 md:p-8 rounded-[2rem] shadow-xl border flex flex-col md:flex-row gap-6 md:gap-8 items-center relative overflow-hidden transition-colors bg-white border-[#E8D5C4]/30 mt-6">
+              
+              <div className="hidden md:flex flex-col items-center gap-4">
+                 <button 
+                   onClick={() => setIndexActuel(prev => Math.max(0, prev - 1))}
+                   disabled={indexActuel === 0}
+                   className="p-3 bg-[#FAF7F2] rounded-full text-[#8D7B68] hover:bg-[#E8D5C4] disabled:opacity-30 transition-all shadow-sm"
+                 >
+                   <span className="font-black text-sm">←</span>
+                 </button>
+              </div>
+
+              <div className="w-32 h-32 md:w-56 md:h-56 rounded-2xl bg-[#FAF7F2] border border-[#E8D5C4]/50 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
+                {currentItem.itemImage ? (
+                  <img src={currentItem.itemImage} alt={currentItem.name} className="w-full h-full object-cover" />
+                ) : (
+                  <ImageIcon size={48} className="text-[#E8D5C4]" />
+                )}
+              </div>
+
+              <div className="flex-1 w-full flex flex-col items-center md:items-start text-center md:text-left">
+                <div className="flex flex-wrap justify-center md:justify-start gap-2 mb-3">
+                  <span className="bg-gray-50 px-3 py-1 rounded-lg text-[10px] font-black uppercase text-gray-400 border border-gray-100">
+                    CMD: {currentItem.orderNumber}
+                  </span>
+                </div>
+                
+                <h2 className="text-2xl md:text-4xl font-serif font-black text-[#8D7B68] leading-tight mb-2">
+                  {currentItem.customerName}
+                </h2>
+                
+                <p className="text-sm font-bold text-[#B8A99A] mb-6">
+                  {currentItem.name || "Article sans nom"} • {currentItem.category} • {currentItem.size} / {currentItem.color}
+                </p>
+
+                <div className="w-full relative p-4 rounded-2xl transition-colors bg-[#FAF7F2]/50 border border-[#E8D5C4]/40">
+                  <label className="text-[10px] uppercase font-bold mb-2 block tracking-widest text-[#D4B996]">
+                    Saisir Prix d'Achat (en Euros)
+                  </label>
+                  
+                  <div className="flex flex-col md:flex-row items-center gap-3 w-full">
+                    <form 
+                      onSubmit={(e) => { e.preventDefault(); soumettrePrix(currentItem); }}
+                      className="flex items-center gap-3 w-full md:w-auto"
+                    >
+                      <input
+                        ref={inputRef}
+                        type="number"
+                        step="0.01"
+                        value={prixSaisi}
+                        onChange={(e) => setPrixSaisi(e.target.value)}
+                        onKeyDown={(e) => handleValiderPrix(e, currentItem)}
+                        placeholder="Ex: 12.50"
+                        className="w-full md:w-48 p-4 md:p-5 text-2xl font-black text-center md:text-left text-[#4A3F35] bg-white rounded-2xl outline-none shadow-md border-2 border-transparent focus:border-[#D4B996] transition-all"
+                      />
+                      <span className="text-[#B8A99A] font-black text-2xl hidden md:block">€</span>
+                      
+                      <button 
+                        type="submit"
+                        disabled={prixSaisi === ""}
+                        className="md:hidden p-4 bg-[#8D7B68] text-white rounded-2xl font-black shadow-md disabled:opacity-50 active:scale-95 transition-transform"
+                      >
+                        OK
+                      </button>
+                    </form>
+
+                    <div className="hidden md:block w-px h-12 bg-[#E8D5C4]/50 mx-2"></div>
+
+                    {/* BOUTON GRATUIT */}
+                    <button 
+                      onClick={() => soumettrePrix(currentItem, 0)}
+                      className="w-full md:w-auto p-4 md:p-5 bg-white border-2 border-pink-200 text-pink-500 rounded-2xl font-black shadow-sm hover:bg-pink-50 hover:border-pink-300 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Sparkles size={18} /> C'est Gratuit (0€)
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="md:flex flex-col items-center gap-2 mt-4 md:mt-0 w-full md:w-auto">
+                 <button 
+                   onClick={() => setIndexActuel(prev => prev < articlesAPricer.length - 1 ? prev + 1 : 0)}
+                   className="w-full md:w-auto px-4 py-3 md:p-4 bg-white border border-[#E8D5C4] shadow-sm rounded-xl md:rounded-full text-[#8D7B68] hover:bg-[#FAF7F2] transition-all flex items-center justify-center gap-2"
+                 >
+                   <span className="text-[10px] uppercase font-bold md:hidden">Passer l'article</span>
+                   <span className="font-black text-sm hidden md:block">→</span>
+                 </button>
+                 <p className="text-[8px] text-gray-400 uppercase font-bold hidden md:block mt-2">Passer</p>
+              </div>
+
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
 // --- MAIN APP ---
 const MainApp = ({ user }) => {
   const [globalSearch, setGlobalSearch] = useState("");
@@ -1332,6 +1530,7 @@ const MainApp = ({ user }) => {
           <SidebarItem active={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} icon={LayoutDashboard} label="Tableau de bord" />
           <SidebarItem active={activeTab === "orders"} onClick={() => setActiveTab("orders")} icon={Package} label="Commandes" badge={lateDeliveries.length} />
           <SidebarItem active={activeTab === "pesee"} onClick={() => setActiveTab("pesee")} icon={Scale} label="Station Pesée" />
+          <SidebarItem active={activeTab === "prix"} onClick={() => setActiveTab("prix")} icon={Euro} label="Station Prix" />
           <SidebarItem active={activeTab === "gallery"} onClick={() => setActiveTab("gallery")} icon={ImageIcon} label="Galerie" />
           <SidebarItem active={activeTab === "customers"} onClick={() => setActiveTab("customers")} icon={Users} label="Base Clientes" />
           <SidebarItem active={activeTab === "arrivages"} onClick={() => setActiveTab("arrivages")} icon={Globe} label="Arrivages (Logistique)" />
@@ -1546,7 +1745,7 @@ const MainApp = ({ user }) => {
                     const nextNum = monthOrders.length === 0 ? 1 : Math.max(...monthOrders.map((o) => parseInt(o.orderNumber.split("-")[1]) || 0)) + 1;
                     setOrderNumber(`${prefix}${String(nextNum).padStart(3, "0")}`);
                     setOrderDate(today);
-                    setOrderItems([{ id: Date.now(), name: "", category: "", size: "", color: "", weightG: 0, priceAchatEuro: 0, priceVente: 0, arrivageId: "", status: "A commander" }]);
+                    setOrderItems([{ id: Date.now(), name: "", category: "", size: "", color: "", weightG: 0, priceAchatEuro: "", priceVente: 0, arrivageId: "", status: "A commander" }]);
                     setOrderPayments([]);
                     setShippingNational(0);
                     setOrderStatus("A commander");
@@ -1695,24 +1894,33 @@ const MainApp = ({ user }) => {
           </div>
         )}
 {/* ONGLET STATION DE PESÉE */}
-        {activeTab === "pesee" && (
-          <StationDePesee 
+        {activeTab === "pesee" && (
+          <StationDePesee 
+            orders={orders} 
+            arrivages={arrivages} 
+            showToast={showToast}
+            onNewArrivage={() => {
+              const today = new Date().toISOString().split("T")[0];
+              const prefix = `A${today.slice(2, 4)}${today.slice(5, 7)}-`;
+              const monthArrivages = arrivages.filter((a) => a.number?.startsWith(prefix));
+              const nextNum = monthArrivages.length === 0 ? 1 : Math.max(...monthArrivages.map((a) => parseInt(a.number.split("-")[1]) || 0)) + 1;
+              setArrivageNumber(`${prefix}${String(nextNum).padStart(2, "0")}`);
+              setArrivageDate(today);
+              setEditingArrivage(null);
+              setShowAddArrivage(true);
+            }}
+          />
+        )}
+
+        {/* ONGLET STATION DE PRIX D'ACHAT */}
+        {activeTab === "prix" && (
+          <StationPrixAchat 
             orders={orders} 
-            arrivages={arrivages} 
-            showToast={showToast}
-            onNewArrivage={() => {
-              const today = new Date().toISOString().split("T")[0];
-              const prefix = `A${today.slice(2, 4)}${today.slice(5, 7)}-`;
-              const monthArrivages = arrivages.filter((a) => a.number?.startsWith(prefix));
-              const nextNum = monthArrivages.length === 0 ? 1 : Math.max(...monthArrivages.map((a) => parseInt(a.number.split("-")[1]) || 0)) + 1;
-              setArrivageNumber(`${prefix}${String(nextNum).padStart(2, "0")}`);
-              setArrivageDate(today);
-              setEditingArrivage(null);
-              setShowAddArrivage(true);
-            }}
+            showToast={showToast} 
           />
         )}
-        {/* GALLERY TAB */}
+
+        {/* GALLERY TAB */}
         {activeTab === "gallery" && (
           <div className="space-y-4 md:space-y-6 animate-in slide-in-from-bottom-4">
             
@@ -2095,6 +2303,7 @@ const MainApp = ({ user }) => {
           { tab: "dashboard", icon: LayoutDashboard, label: "Bord" },
           { tab: "orders", icon: Package, label: "Ventes" },
           { tab: "pesee", icon: Scale, label: "Pesée" },
+          { tab: "prix", icon: Euro, label: "Prix Achat" }, // <-- AJOUT ICI
           { tab: "gallery", icon: ImageIcon, label: "Galerie" }, 
           { tab: "customers", icon: Users, label: "Clientes" },
           { tab: "arrivages", icon: Globe, label: "Arrivages" },
@@ -2437,8 +2646,8 @@ const OrderModal = ({
                   </div>
                 ))}
               </div>
-              <button type="button" onClick={() => setOrderItems([...orderItems, { id: Date.now(), name: "", category: "", size: "", color: "", weightG: 0, priceAchatEuro: 0, priceVente: 0, arrivageId: defaultArrivage, status: "En attente" }])} className="w-full mt-3 shrink-0 py-4 md:py-3 border border-dashed border-[#E8D5C4] text-[#8D7B68] hover:bg-[#FAF7F2] rounded-xl font-bold text-xs flex items-center justify-center gap-2 bg-white/50 shadow-sm">
-                <Plus size={16} /> Ajouter un article
+              <button type="button" onClick={() => setOrderItems([...orderItems, { id: Date.now(), name: "", category: "", size: "", color: "", weightG: 0, priceAchatEuro: "", priceVente: 0, arrivageId: defaultArrivage, status: "En attente" }])}
+// ...
               </button>
             </div>
 

@@ -444,19 +444,17 @@ const StationDePesee = ({ orders, arrivages, showToast, onNewArrivage }) => {
   const [indexActuel, setIndexActuel] = useState(0);
   const inputRef = React.useRef(null);
 
-  // 1. Récupérer TOUS les articles en attente de pesée (peu importe l'arrivage)
+  // 1. Récupérer TOUS les articles en attente de pesée
   const articlesAPeser = React.useMemo(() => {
     let list = [];
     orders.forEach((o) => {
       if (o.status === "Annulée") return;
       (o.items || []).forEach((item) => {
-        // On récupère les articles sans poids ou à 0
         if (item.status !== "Retourné Fournisseur" && (!item.weightG || parseFloat(item.weightG) === 0)) {
           list.push({ ...item, orderId: o.id, orderNumber: o.orderNumber, customerName: o.customerName, orderObj: o });
         }
       });
     });
-    // Trier par date de commande (les plus anciens d'abord)
     return list.sort((a, b) => {
       const timeA = a.orderObj.date?.toMillis ? a.orderObj.date.toMillis() : new Date(a.orderObj.date || 0).getTime();
       const timeB = b.orderObj.date?.toMillis ? b.orderObj.date.toMillis() : new Date(b.orderObj.date || 0).getTime();
@@ -464,54 +462,57 @@ const StationDePesee = ({ orders, arrivages, showToast, onNewArrivage }) => {
     });
   }, [orders]);
 
-  // Sécurité pour l'index si on pèse un article et que la liste rétrécit
   React.useEffect(() => {
     if (indexActuel >= articlesAPeser.length) setIndexActuel(0);
   }, [articlesAPeser.length, indexActuel]);
 
-  // Forcer le focus sur l'input
   React.useEffect(() => {
     if (inputRef.current) inputRef.current.focus();
   }, [indexActuel, articlesAPeser, arrivageActif]);
 
-  const handleValiderPoids = async (e, currentItem) => {
-    if (e.key === "Enter" && poidsSaisi !== "") {
-      e.preventDefault();
+  // NOUVELLE FONCTION POUR SAUVEGARDER
+  const soumettrePoids = async (currentItem) => {
+    if (poidsSaisi === "") return;
 
-      // SÉCURITÉ : On oblige à ouvrir un carton (Arrivage) avant de peser !
-      if (!arrivageActif) {
-        showToast("⚠️ Ouvre un Arrivage en haut avant de commencer à peser !", "error");
-        return;
-      }
+    if (!arrivageActif) {
+      showToast("⚠️ Ouvre un Arrivage en haut avant de commencer à peser !", "error");
+      return;
+    }
 
-      const poidsGrammes = poidsSaisi;
-      setPoidsSaisi("");
+    const poidsGrammes = poidsSaisi;
+    setPoidsSaisi("");
 
-      try {
-        const orderRef = doc(db, "artifacts", appId, "public", "data", "orders", currentItem.orderId);
-        
-        const updatedItems = currentItem.orderObj.items.map(it => {
-          if (it.id === currentItem.id) {
-            let newStatus = it.status;
-            if (!it.status || it.status === "En attente" || it.status === "A commander") {
-              newStatus = "Reçu";
-            }
-            // L'ARTICLE EST ASSIGNÉ AU CARTON OUVERT INSTANTANÉMENT
-            return { 
-              ...it, 
-              weightG: poidsGrammes, 
-              status: newStatus, 
-              arrivageId: arrivageActif 
-            };
+    try {
+      const orderRef = doc(db, "artifacts", appId, "public", "data", "orders", currentItem.orderId);
+      
+      const updatedItems = currentItem.orderObj.items.map(it => {
+        if (it.id === currentItem.id) {
+          let newStatus = it.status;
+          if (!it.status || it.status === "En attente" || it.status === "A commander") {
+            newStatus = "Reçu";
           }
-          return it;
-        });
+          return { 
+            ...it, 
+            weightG: poidsGrammes, 
+            status: newStatus, 
+            arrivageId: arrivageActif 
+          };
+        }
+        return it;
+      });
 
-        await updateDoc(orderRef, { items: updatedItems });
-        showToast(`Pesée validée et assignée au carton ! (${poidsGrammes}g)`);
-      } catch (error) {
-        showToast("Erreur lors de la sauvegarde", "error");
-      }
+      await updateDoc(orderRef, { items: updatedItems });
+      showToast(`Pesée validée et assignée au carton ! (${poidsGrammes}g)`);
+    } catch (error) {
+      showToast("Erreur lors de la sauvegarde", "error");
+    }
+  };
+
+  // GARDE LA TOUCHE ENTRÉE POUR LE PC
+  const handleValiderPoids = async (e, currentItem) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      soumettrePoids(currentItem);
     }
   };
 
@@ -530,8 +531,6 @@ const StationDePesee = ({ orders, arrivages, showToast, onNewArrivage }) => {
         </div>
         
         <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto flex-1 md:justify-end">
-          
-          {/* SÉLECTEUR D'ARRIVAGE (CRITIQUE) */}
           <div className="relative w-full md:w-72 flex gap-2">
             <select 
               value={arrivageActif} 
@@ -539,7 +538,6 @@ const StationDePesee = ({ orders, arrivages, showToast, onNewArrivage }) => {
               className={`flex-1 p-3 rounded-xl text-xs font-bold outline-none shadow-sm appearance-none transition-colors ${!arrivageActif ? "bg-red-50 text-red-500 border border-red-200 animate-pulse" : "bg-[#8D7B68] text-white border-transparent"}`}
             >
               <option value="">Sélectionner l'arrivage en cours...</option>
-              {/* On trie pour avoir les plus récents en premier */}
               {[...(arrivages || [])].sort((a,b) => new Date(b.date) - new Date(a.date)).map(a => (
                 <option key={a.id} value={a.id}>📦 Arrivage #{a.number} ({a.date})</option>
               ))}
@@ -593,7 +591,6 @@ const StationDePesee = ({ orders, arrivages, showToast, onNewArrivage }) => {
           {currentItem && (
             <div className={`p-6 md:p-8 rounded-[2rem] shadow-xl border flex flex-col md:flex-row gap-6 md:gap-8 items-center relative overflow-hidden transition-colors ${arrivageActif ? "bg-white border-[#E8D5C4]/30" : "bg-red-50/20 border-red-200"}`}>
               
-              {/* Bouton Précédent */}
               <div className="hidden md:flex flex-col items-center gap-4">
                  <button 
                    onClick={() => setIndexActuel(prev => Math.max(0, prev - 1))}
@@ -604,7 +601,6 @@ const StationDePesee = ({ orders, arrivages, showToast, onNewArrivage }) => {
                  </button>
               </div>
 
-              {/* Photo */}
               <div className="w-32 h-32 md:w-56 md:h-56 rounded-2xl bg-[#FAF7F2] border border-[#E8D5C4]/50 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
                 {currentItem.itemImage ? (
                   <img src={currentItem.itemImage} alt={currentItem.name} className="w-full h-full object-cover" />
@@ -613,7 +609,6 @@ const StationDePesee = ({ orders, arrivages, showToast, onNewArrivage }) => {
                 )}
               </div>
 
-              {/* Informations et Saisie */}
               <div className="flex-1 w-full flex flex-col items-center md:items-start text-center md:text-left">
                 <div className="flex flex-wrap justify-center md:justify-start gap-2 mb-3">
                   <span className="bg-gray-50 px-3 py-1 rounded-lg text-[10px] font-black uppercase text-gray-400 border border-gray-100">
@@ -638,7 +633,12 @@ const StationDePesee = ({ orders, arrivages, showToast, onNewArrivage }) => {
                   <label className={`text-[10px] uppercase font-bold mb-2 block tracking-widest ${arrivageActif ? "text-[#D4B996]" : "text-red-500"}`}>
                     {arrivageActif ? "Saisir Poids (en Grammes)" : "STOP : SÉLECTIONNEZ LE CARTON EN HAUT"}
                   </label>
-                  <div className="flex items-center gap-3 justify-center md:justify-start">
+                  
+                  {/* C'EST ICI QUE TOUT CHANGE POUR LE MOBILE */}
+                  <form 
+                    onSubmit={(e) => { e.preventDefault(); soumettrePoids(currentItem); }}
+                    className="flex items-center gap-3 justify-center md:justify-start"
+                  >
                     <input
                       ref={inputRef}
                       type="number"
@@ -650,11 +650,20 @@ const StationDePesee = ({ orders, arrivages, showToast, onNewArrivage }) => {
                       className="w-full md:w-48 p-4 md:p-5 text-2xl font-black text-center md:text-left text-[#4A3F35] bg-white rounded-2xl outline-none shadow-md border-2 border-transparent focus:border-[#D4B996] transition-all disabled:opacity-50"
                     />
                     <span className="text-[#B8A99A] font-black text-2xl hidden md:block">g</span>
-                  </div>
+                    
+                    {/* BOUTON "OK" QUI SAUVE LA MISE SUR TÉLÉPHONE */}
+                    <button 
+                      type="submit"
+                      disabled={!arrivageActif || poidsSaisi === ""}
+                      className="md:hidden p-4 bg-[#8D7B68] text-white rounded-2xl font-black shadow-md disabled:opacity-50 active:scale-95 transition-transform"
+                    >
+                      OK
+                    </button>
+                  </form>
+
                 </div>
               </div>
 
-              {/* Bouton Suivant / Passer */}
               <div className="md:flex flex-col items-center gap-2 mt-4 md:mt-0 w-full md:w-auto">
                  <button 
                    onClick={() => setIndexActuel(prev => prev < articlesAPeser.length - 1 ? prev + 1 : 0)}

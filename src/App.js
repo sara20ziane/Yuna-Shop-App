@@ -820,7 +820,23 @@ const MainApp = ({ user }) => {
           });
         }
       });
-      // --- FONCTION DE MISE À JOUR RAPIDE DU STATUT ---
+
+      // Exécuter la mise à jour pour chaque commande impactée
+      for (const orderId in updatesByOrder) {
+        const orderRef = doc(db, "artifacts", appId, "public", "data", "orders", orderId);
+        await updateDoc(orderRef, { items: updatesByOrder[orderId].items });
+      }
+
+      showToast(`${selectedGalleryItems.length} photo(s) retirée(s) avec succès`);
+      setIsGallerySelectionMode(false);
+      setSelectedGalleryItems([]);
+    } catch (error) {
+      console.error(error);
+      showToast("Erreur lors de la suppression des photos", "error");
+    }
+  };
+
+  // --- FONCTION DE MISE À JOUR RAPIDE DU STATUT ---
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
       const orderRef = doc(db, "artifacts", appId, "public", "data", "orders", orderId);
